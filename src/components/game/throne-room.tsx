@@ -42,20 +42,32 @@ export function ThroneRoom() {
                     <XpBar value={s.profile.progress.xpIntoLevel} max={s.profile.progress.xpForNext} />
                   </div>
                 </div>
-                <div className="flex gap-3 sm:border-l-2 sm:border-border sm:pl-4">
-                  <Portrait kind="rival" size={72} title="Каэль Валькарион" dim />
+                <Link href="/rival" className="flex gap-3 sm:border-l-2 sm:border-border sm:pl-4 hover:opacity-90">
+                  <Portrait kind="rival" size={72} title={s.rival?.name ?? "Каэль Валькарион"} />
                   <div className="min-w-0 flex-1">
-                    <div className="font-display text-lg text-rival">Каэль Валькарион</div>
-                    <div className="text-xs text-muted">Соперник</div>
-                    <div className="mt-1 font-display text-2xl text-muted">Ур. ?</div>
-                    <p className="text-xs text-muted">Каэль пока собирает силы. Его собственный путь начнётся в Sprint 2.</p>
+                    <div className="font-display text-lg text-rival truncate">{s.rival?.name ?? "Каэль Валькарион"}</div>
+                    <div className="text-xs text-muted">Соперник · Чёрный Предел</div>
+                    {s.rival ? (
+                      <>
+                        <div className="mt-1 font-display text-2xl">Ур. {s.rival.level}</div>
+                        <XpBar value={s.rival.progress.xpIntoLevel} max={s.rival.progress.xpForNext} label="Опыт Каэля" />
+                        {s.rival.lastAction && <p className="mt-1 text-xs text-muted line-clamp-2">{s.rival.lastAction.text}</p>}
+                      </>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted">Данные соперника временно недоступны.</p>
+                    )}
                   </div>
-                </div>
+                </Link>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 <Stat label="XP сегодня" value={s.xp.today} />
                 <Stat label="XP за неделю" value={s.xp.week} />
-                <Stat label="Каэль за неделю" value="—" muted />
+                <Stat
+                  label="Каэль за неделю"
+                  value={s.rival ? s.rival.weekXp : "—"}
+                  muted={!s.rival}
+                  rival
+                />
               </div>
             </section>
 
@@ -127,10 +139,10 @@ export function ThroneRoom() {
   );
 }
 
-function Stat({ label, value, muted }: { label: string; value: number | string; muted?: boolean }) {
+function Stat({ label, value, muted, rival }: { label: string; value: number | string; muted?: boolean; rival?: boolean }) {
   return (
     <div className="border-2 border-border bg-bg-deep p-2">
-      <div className={`font-display text-xl ${muted ? "text-muted" : "text-xp"}`}>{value}</div>
+      <div className={`font-display text-xl ${muted ? "text-muted" : rival ? "text-rival" : "text-xp"}`}>{value}</div>
       <div className="text-[11px] text-muted">{label}</div>
     </div>
   );

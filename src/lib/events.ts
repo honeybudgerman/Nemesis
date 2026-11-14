@@ -10,6 +10,10 @@ export function describeEvent(e: GameEventView): string {
       return `Выполнено: «${String(p.title ?? "задание")}» (+${Number(p.xp ?? 0)} XP, +${Number(p.gold ?? 0)} золота)`;
     case "LEVEL_UP":
       return `Достигнут уровень ${Number(p.to ?? 0)}. Титул: ${String(p.rank ?? "")}`;
+    case "RIVAL_APPEARED":
+      return `На горизонте появился соперник: ${String(p.name ?? "Каэль")}, правитель королевства «${String(p.kingdom_name ?? "")}».`;
+    case "RIVAL_LEVEL_UP":
+      return `Каэль достиг уровня ${Number(p.to ?? 0)}. Титул: ${String(p.rank ?? "")}`;
     default:
       return e.type;
   }

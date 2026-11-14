@@ -76,7 +76,43 @@ export interface GameState {
   periods: { today: string; weekStart: string; monthStart: string };
   xp: { today: number; week: number };
   recentEvents: GameEventView[];
+  /** Kael's summary; null only if the rival tables are not migrated yet. */
+  rival: RivalSummary | null;
   serverTime: string;
+}
+
+export interface RivalActionView {
+  id: string;
+  day: string;
+  index: number;
+  type: "STUDY" | "REST";
+  category: string | null;
+  minutes: number;
+  outcome: "SUCCESS" | "PARTIAL" | "FAIL" | "REST";
+  grade: string | null;
+  xp: number;
+  gold: number;
+  text: string;
+}
+
+export interface RivalSummary {
+  name: string;
+  level: number;
+  totalXp: number;
+  progress: LevelProgress;
+  weekXp: number;
+  lastSimulatedDay: string;
+  /** Finished days not yet simulated (client keeps calling /api/rival/sync while > 0). */
+  pendingDays: number;
+  lastAction: RivalActionView | null;
+}
+
+export interface RivalView extends RivalSummary {
+  stats: HeroStats;
+  skills: (SkillView & { heroLevel: number })[];
+  kingdom: KingdomView;
+  actions: RivalActionView[];
+  hero: { level: number; totalXp: number; weekXp: number };
 }
 
 export interface CompleteQuestResult {

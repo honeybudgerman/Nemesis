@@ -15,7 +15,7 @@ const ITEMS: Item[] = [
   { href: "/dashboard", label: "Тронный зал", icon: "👑" },
   { href: "/quests", label: "Задания", icon: "📜" },
   { href: "/skills", label: "Навыки", icon: "📚" },
-  { href: "/rival", label: "Соперник", icon: "⚔️", sprint: 2 },
+  { href: "/rival", label: "Соперник", icon: "⚔️" },
   { href: "/mentor", label: "Наставник", icon: "🔮", sprint: 3 },
   { href: "/kingdom", label: "Королевство", icon: "🏰", sprint: 4 },
   { href: "/court", label: "Двор", icon: "🎭", sprint: 5 },

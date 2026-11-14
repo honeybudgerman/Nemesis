@@ -13,6 +13,8 @@ export type ErrorCode =
   | "MANUAL_QUEST_LIMIT"
   | "IDEMPOTENCY_KEY_REUSED"
   | "INSUFFICIENT_RESOURCES"
+  | "RIVAL_NOT_FOUND"
+  | "RIVAL_DAY_GAP"
   | "NOT_CONFIGURED"
   | "INTERNAL";
 
@@ -29,6 +31,8 @@ const STATUS: Record<ErrorCode, number> = {
   MANUAL_QUEST_LIMIT: 429,
   IDEMPOTENCY_KEY_REUSED: 409,
   INSUFFICIENT_RESOURCES: 409,
+  RIVAL_NOT_FOUND: 404,
+  RIVAL_DAY_GAP: 409,
   NOT_CONFIGURED: 503,
   INTERNAL: 500,
 };
@@ -46,6 +50,8 @@ const MESSAGES: Record<ErrorCode, string> = {
   MANUAL_QUEST_LIMIT: "Лимит собственных заданий на сегодня исчерпан.",
   IDEMPOTENCY_KEY_REUSED: "Повторный запрос с чужим ключом.",
   INSUFFICIENT_RESOURCES: "Недостаточно ресурсов.",
+  RIVAL_NOT_FOUND: "Соперник ещё не появился.",
+  RIVAL_DAY_GAP: "Хроника соперника рассинхронизирована, повторите запрос.",
   NOT_CONFIGURED: "Сервер не настроен: не заданы ключи Supabase.",
   INTERNAL: "Внутренняя ошибка сервера.",
 };
