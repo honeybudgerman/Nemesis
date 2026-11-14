@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Portrait } from "@/components/characters/portrait";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, missingSupabaseEnv } from "@/lib/env";
 import { createUserSupabase } from "@/server/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +44,12 @@ export default async function Home() {
           <p className="mt-1 text-text/85">
             Задайте переменные окружения Supabase из <code>.env.example</code> и перезапустите приложение.
           </p>
+          <p className="mt-2 text-text/85">Не найдены:</p>
+          <ul className="mt-1 list-inside list-disc font-mono text-xs text-danger">
+            {missingSupabaseEnv().map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
         </div>
       )}
     </main>
