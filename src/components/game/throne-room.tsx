@@ -114,9 +114,9 @@ export function ThroneRoom() {
                   <Res label={RESOURCE_LABELS.influence} icon="🎖️" value={s.kingdom.influence} />
                   <Res label={RESOURCE_LABELS.command_points} icon="🚩" value={s.kingdom.commandPoints} wide />
                 </dl>
-                <button className="pixel-btn mt-3 w-full text-sm" disabled title="Карта откроется в Sprint 4">
-                  🗺️ Карта королевства 🔒
-                </button>
+                <Link href="/kingdom" className="pixel-btn mt-3 block w-full text-center text-sm">
+                  🗺️ Карта королевства
+                </Link>
               </section>
 
               {/* Chronicle */}

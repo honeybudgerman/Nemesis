@@ -8,16 +8,18 @@ interface Item {
   label: string;
   icon: string;
   sprint?: number;
+  /** Label for the narrow mobile bar. */
+  short?: string;
 }
 
 /** Locked sections show which sprint delivers them — no fake screens behind them. */
 const ITEMS: Item[] = [
-  { href: "/dashboard", label: "Тронный зал", icon: "👑" },
+  { href: "/dashboard", label: "Тронный зал", short: "Трон", icon: "👑" },
   { href: "/quests", label: "Задания", icon: "📜" },
   { href: "/skills", label: "Навыки", icon: "📚" },
-  { href: "/rival", label: "Соперник", icon: "⚔️" },
-  { href: "/mentor", label: "Наставник", icon: "🔮" },
-  { href: "/kingdom", label: "Королевство", icon: "🏰", sprint: 4 },
+  { href: "/rival", label: "Соперник", short: "Каэль", icon: "⚔️" },
+  { href: "/mentor", label: "Наставник", short: "Орион", icon: "🔮" },
+  { href: "/kingdom", label: "Королевство", short: "Земли", icon: "🏰" },
   { href: "/court", label: "Двор", icon: "🎭", sprint: 5 },
   { href: "/chronicles", label: "Хроники", icon: "📖", sprint: 6 },
 ];
@@ -58,12 +60,12 @@ export function GameNav() {
           <Link
             key={i.href}
             href={i.href}
-            className={`flex flex-1 flex-col items-center py-2 text-xs font-display ${path.startsWith(i.href) ? "text-gold" : "text-muted"}`}
+            className={`flex min-w-0 flex-1 flex-col items-center py-2 text-[10px] font-display ${path.startsWith(i.href) ? "text-gold" : "text-muted"}`}
           >
             <span className="text-lg" aria-hidden>
               {i.icon}
             </span>
-            {i.label}
+            <span className="max-w-full truncate">{"short" in i && i.short ? i.short : i.label}</span>
           </Link>
         ))}
       </nav>

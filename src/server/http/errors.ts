@@ -15,6 +15,16 @@ export type ErrorCode =
   | "INSUFFICIENT_RESOURCES"
   | "RIVAL_NOT_FOUND"
   | "RIVAL_DAY_GAP"
+  | "KINGDOM_NOT_FOUND"
+  | "CONSTRUCTION_BUSY"
+  | "TERRITORY_NOT_OWNED"
+  | "TERRITORY_NOT_ADJACENT"
+  | "BUILD_MAX_LEVEL"
+  | "BUILD_LEVEL_MISMATCH"
+  | "REQUIREMENTS_NOT_MET"
+  | "ARMY_FULL"
+  | "NO_COMMAND_POINTS"
+  | "NOT_ENOUGH_ARMY"
   | "NOT_CONFIGURED"
   | "INTERNAL";
 
@@ -33,6 +43,16 @@ const STATUS: Record<ErrorCode, number> = {
   INSUFFICIENT_RESOURCES: 409,
   RIVAL_NOT_FOUND: 404,
   RIVAL_DAY_GAP: 409,
+  KINGDOM_NOT_FOUND: 404,
+  CONSTRUCTION_BUSY: 409,
+  TERRITORY_NOT_OWNED: 409,
+  TERRITORY_NOT_ADJACENT: 409,
+  BUILD_MAX_LEVEL: 409,
+  BUILD_LEVEL_MISMATCH: 409,
+  REQUIREMENTS_NOT_MET: 409,
+  ARMY_FULL: 409,
+  NO_COMMAND_POINTS: 409,
+  NOT_ENOUGH_ARMY: 409,
   NOT_CONFIGURED: 503,
   INTERNAL: 500,
 };
@@ -52,6 +72,16 @@ const MESSAGES: Record<ErrorCode, string> = {
   INSUFFICIENT_RESOURCES: "Недостаточно ресурсов.",
   RIVAL_NOT_FOUND: "Соперник ещё не появился.",
   RIVAL_DAY_GAP: "Хроника соперника рассинхронизирована, повторите запрос.",
+  KINGDOM_NOT_FOUND: "Королевство ещё не основано.",
+  CONSTRUCTION_BUSY: "Уже идёт строительство. Дождитесь его окончания.",
+  TERRITORY_NOT_OWNED: "Эта территория вам не принадлежит.",
+  TERRITORY_NOT_ADJACENT: "Атаковать можно только соседние территории.",
+  BUILD_MAX_LEVEL: "Достигнут максимальный уровень: сначала улучшите замок.",
+  BUILD_LEVEL_MISMATCH: "Постройка уже изменилась. Обновите экран.",
+  REQUIREMENTS_NOT_MET: "Не выполнены требования для найма.",
+  ARMY_FULL: "Армия заполнена. Улучшите замок или казармы.",
+  NO_COMMAND_POINTS: "Нет очков командования. Они восстанавливаются каждый день.",
+  NOT_ENOUGH_ARMY: "Некого вести в бой: наймите войска.",
   NOT_CONFIGURED: "Сервер не настроен: не заданы ключи Supabase.",
   INTERNAL: "Внутренняя ошибка сервера.",
 };
