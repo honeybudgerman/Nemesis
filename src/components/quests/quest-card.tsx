@@ -46,7 +46,7 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <h3 className="font-pixel text-base text-text">{quest.title}</h3>
+            <h3 className="font-display text-base text-text">{quest.title}</h3>
             {quest.isOptional && <span className="text-xs text-mana">необязательно</span>}
             {quest.source === "MANUAL" && <span className="text-xs text-gold-dim">своё</span>}
           </div>
@@ -66,7 +66,7 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
           {compact && <p className="mb-2 text-text/85">{quest.description}</p>}
           {quest.successCriteria.length > 0 && (
             <>
-              <div className="font-pixel text-xs text-gold">Критерии выполнения</div>
+              <div className="font-display text-xs text-gold">Критерии выполнения</div>
               <ul className="mt-1 list-inside list-disc text-text/85">
                 {quest.successCriteria.map((c) => (
                   <li key={c}>{c}</li>

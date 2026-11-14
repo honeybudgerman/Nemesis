@@ -37,7 +37,7 @@
   --color-rival: var(--rival);
   --color-mana: var(--mana);
   --font-sans: var(--font-body);
-  --font-pixel: var(--font-pixel);
+
 }
 
 html,
@@ -55,9 +55,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.font-pixel {
-  font-family: var(--font-pixel), monospace;
-  letter-spacing: 0.02em;
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  font-variant-numeric: lining-nums;
 }
 
 .pixelated {
@@ -80,7 +82,8 @@ body {
 }
 
 .pixel-btn {
-  font-family: var(--font-pixel), monospace;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-weight: 600;
   background: var(--panel-2);
   border: 2px solid var(--border);
   color: var(--text);

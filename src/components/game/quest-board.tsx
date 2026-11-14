@@ -25,7 +25,7 @@ export function QuestBoard() {
         return (
           <div>
             <div className="flex items-baseline justify-between">
-              <h1 className="font-pixel text-2xl text-gold">Задания</h1>
+              <h1 className="font-display text-2xl text-gold">Задания</h1>
               <span className="text-sm text-muted">Бюджет: {s.user.dailyMinutes} мин/день</span>
             </div>
             <div role="tablist" className="mt-3 flex gap-2">
@@ -98,7 +98,7 @@ function ManualQuestForm() {
         );
       }}
     >
-      <h2 className="font-pixel text-gold">Своё задание</h2>
+      <h2 className="font-display text-gold">Своё задание</h2>
       <p className="mt-1 text-xs text-muted">
         Опыт назначает движок по времени и сложности. Не больше 3 своих заданий и 60 XP за них в день.
       </p>

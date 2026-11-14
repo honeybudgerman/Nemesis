@@ -43,10 +43,10 @@ export function SettingsView({ email }: { email: string }) {
 
   return (
     <div className="grid max-w-xl gap-4">
-      <h1 className="font-pixel text-2xl text-gold">Настройки</h1>
+      <h1 className="font-display text-2xl text-gold">Настройки</h1>
 
       <section className="pixel-panel p-4">
-        <h2 className="font-pixel text-gold">Аккаунт</h2>
+        <h2 className="font-display text-gold">Аккаунт</h2>
         <p className="mt-1 text-sm text-muted">{email}</p>
         <p className="mt-1 text-sm text-text/85">
           Прогресс хранится в облаке: войдите с этим email на любом устройстве и продолжите с того же места.
@@ -57,7 +57,7 @@ export function SettingsView({ email }: { email: string }) {
       </section>
 
       <section className="pixel-panel p-4">
-        <h2 className="font-pixel text-gold">Интерфейс</h2>
+        <h2 className="font-display text-gold">Интерфейс</h2>
         <label className="mt-2 flex min-h-11 items-center gap-3 text-sm">
           <input type="checkbox" className="h-5 w-5 accent-[var(--gold)]" checked={motionOff} onChange={(e) => setMotionOff(e.target.checked)} />
           Отключить анимации
@@ -65,7 +65,7 @@ export function SettingsView({ email }: { email: string }) {
       </section>
 
       <section className="pixel-panel p-4">
-        <h2 className="font-pixel text-gold">Резервная копия</h2>
+        <h2 className="font-display text-gold">Резервная копия</h2>
         <p className="mt-1 text-sm text-text/85">
           Скачайте весь прогресс в JSON: профиль, навыки, задания, историю и королевство. Пароли и ключи в файл не попадают.
         </p>
@@ -75,7 +75,7 @@ export function SettingsView({ email }: { email: string }) {
       </section>
 
       <section className="pixel-panel border-danger p-4">
-        <h2 className="font-pixel text-danger">Удалить игровой профиль</h2>
+        <h2 className="font-display text-danger">Удалить игровой профиль</h2>
         <p className="mt-1 text-sm text-text/85">
           Герой, королевство, задания и вся история будут удалены без возможности восстановления. Сначала скачайте резервную
           копию. Чтобы подтвердить, введите слово <b>УДАЛИТЬ</b>.

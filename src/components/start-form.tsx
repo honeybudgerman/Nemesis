@@ -55,7 +55,7 @@ export function StartForm() {
       <div className="flex items-center gap-4">
         <Portrait kind="hero" size={64} title="Ваш герой" />
         <div>
-          <h1 className="font-pixel text-xl text-gold">Глава 1. Два наследника</h1>
+          <h1 className="font-display text-xl text-gold">Глава 1. Два наследника</h1>
           <p className="mt-1 text-sm text-text/85">
             Старый король умер. Престол делят двое наследников — вы и Каэль Валькарион. Кто станет королём, решат не
             мечи, а ежедневный труд.

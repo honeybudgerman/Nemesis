@@ -59,7 +59,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   return (
     <form onSubmit={submit} className="pixel-panel pixel-panel-gold w-full p-5 sm:p-6">
-      <h1 className="font-pixel text-2xl text-gold">{mode === "login" ? "Вход" : "Регистрация"}</h1>
+      <h1 className="font-display text-2xl text-gold">{mode === "login" ? "Вход" : "Регистрация"}</h1>
       <label className="mt-4 block">
         <span className="text-sm text-muted">Email</span>
         <input className="pixel-input mt-1" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

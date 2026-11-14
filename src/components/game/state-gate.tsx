@@ -19,7 +19,7 @@ export function StateGate({ children }: { children: (state: GameState) => React.
     );
   }
   if (isPending) {
-    return <div className="py-16 text-center font-pixel text-muted">Загрузка королевства…</div>;
+    return <div className="py-16 text-center font-display text-muted">Загрузка королевства…</div>;
   }
   return (
     <div className="pixel-panel p-6 text-center">

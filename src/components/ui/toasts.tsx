@@ -18,7 +18,7 @@ export function Toasts() {
         <button
           key={t.id}
           onClick={() => dismiss(t.id)}
-          className={`pixel-panel anim-pop pointer-events-auto max-w-md px-4 py-2 text-sm font-pixel ${STYLE[t.kind]}`}
+          className={`pixel-panel anim-pop pointer-events-auto max-w-md px-4 py-2 text-sm font-display ${STYLE[t.kind]}`}
         >
           {t.kind === "level" ? "👑 " : ""}
           {t.text}

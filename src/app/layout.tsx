@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { PT_Sans, Pixelify_Sans } from "next/font/google";
+import { Alegreya_SC, Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const body = PT_Sans({ subsets: ["latin", "cyrillic"], weight: ["400", "700"], variable: "--font-body" });
-const pixel = Pixelify_Sans({ subsets: ["latin", "cyrillic"], weight: ["400", "600", "700"], variable: "--font-pixel" });
+const body = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-body" });
+const display = Alegreya_SC({ subsets: ["latin", "cyrillic"], weight: ["500", "700"], variable: "--font-display" });
 
 export const metadata: Metadata = {
   title: "NEMESIS: Восхождение двух королей",
@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru" className={`${body.variable} ${pixel.variable}`}>
+    <html lang="ru" className={`${body.variable} ${display.variable}`}>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>

@@ -5,7 +5,7 @@ export function XpBar({ value, max, label }: { value: number; max: number; label
       <div className="xp-bar" role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={label ?? "Опыт"}>
         <span style={{ width: `${pct}%` }} />
       </div>
-      <div className="mt-1 flex justify-between text-xs text-muted font-pixel">
+      <div className="mt-1 flex justify-between text-xs text-muted font-display">
         <span>
           {value.toLocaleString("ru-RU")} / {max.toLocaleString("ru-RU")} XP
         </span>
