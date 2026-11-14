@@ -128,3 +128,41 @@ export interface CompleteQuestResult {
 export interface ApiErrorBody {
   error: { code: string; message: string; details?: unknown };
 }
+
+export interface AiStatus {
+  configured: boolean;
+  model: string;
+  todayRequests: number;
+  dailyLimit: number;
+  monthCostUsd: number;
+  monthlyBudgetUsd: number;
+}
+
+export interface MentorMessageView {
+  id: string;
+  role: "user" | "mentor";
+  content: string;
+  source: "USER" | "AI" | "FALLBACK";
+  createdAt: string;
+}
+
+export interface MentorEvaluationView {
+  id: string;
+  questId: string;
+  questTitle: string;
+  grade: Grade;
+  reasoning: string;
+  mistakes: string[];
+  recommendations: string[];
+  nextTopic: string;
+  createdAt: string;
+}
+
+export interface MentorView {
+  heroName: string;
+  ai: AiStatus;
+  planToday: "available" | "exists" | "too_late";
+  reviewQuests: { id: string; title: string }[];
+  messages: MentorMessageView[];
+  evaluations: MentorEvaluationView[];
+}

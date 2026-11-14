@@ -14,6 +14,8 @@ export function describeEvent(e: GameEventView): string {
       return `На горизонте появился соперник: ${String(p.name ?? "Каэль")}, правитель королевства «${String(p.kingdom_name ?? "")}».`;
     case "RIVAL_LEVEL_UP":
       return `Каэль достиг уровня ${Number(p.to ?? 0)}. Титул: ${String(p.rank ?? "")}`;
+    case "MENTOR_PLAN":
+      return `Орион составил план на день: заданий — ${Number(p.quests ?? 0)}.`;
     default:
       return e.type;
   }

@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { SKILL_ICONS, SKILL_LABELS, isSkillCode } from "@/data/skills";
 import { useCompleteQuest, useSkipQuest } from "@/hooks/use-game";
+import { useEvaluateAnswer } from "@/hooks/use-mentor";
 import { useOnline } from "@/hooks/use-online";
 import { useStartedQuests } from "@/stores/started-quests";
-import type { QuestView } from "@/types/game";
+import type { MentorEvaluationView, QuestView } from "@/types/game";
+import { EvaluationCard } from "./evaluation-card";
 
 const STATUS_LABEL: Record<QuestView["status"], string> = {
   PENDING: "Ожидает",
@@ -27,11 +29,16 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
   const online = useOnline();
   const complete = useCompleteQuest();
   const skip = useSkipQuest();
+  const evaluate = useEvaluateAnswer();
+  const [answer, setAnswer] = useState("");
+  const [verdict, setVerdict] = useState<MentorEvaluationView | null>(null);
+  const [reviewDown, setReviewDown] = useState<string | null>(null);
+  const review = quest.evaluationMode !== "SELF_REPORT";
   const startedAt = useStartedQuests((s) => s.started[quest.id]);
   const start = useStartedQuests((s) => s.start);
 
   const pending = quest.status === "PENDING";
-  const busy = complete.isPending || skip.isPending;
+  const busy = complete.isPending || skip.isPending || evaluate.isPending;
   const cat = isSkillCode(quest.category) ? quest.category : null;
   const done = quest.status === "COMPLETED";
 
@@ -49,6 +56,8 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
             <h3 className="font-display text-base text-text">{quest.title}</h3>
             {quest.isOptional && <span className="text-xs text-mana">необязательно</span>}
             {quest.source === "MANUAL" && <span className="text-xs text-gold-dim">своё</span>}
+            {quest.source === "AI" && <span className="text-xs text-mana">от Ориона</span>}
+            {review && <span className="text-xs text-mana">проверяет Орион</span>}
           </div>
           <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted">
             <span>{cat ? SKILL_LABELS[cat] : quest.category}</span>
@@ -78,7 +87,19 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
             Срок: {new Date(quest.deadlineAt).toLocaleString("ru-RU", { dateStyle: "medium", timeStyle: "short" })}
             {quest.grade && <> · Оценка: {quest.grade}</>}
           </div>
-          {pending && (
+          {pending && review && (
+            <label className="mt-3 block">
+              <span className="text-xs text-muted">Ответ для Ориона: он проверит его по критериям и поставит оценку</span>
+              <textarea
+                className="pixel-input mt-1 min-h-28"
+                maxLength={4000}
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+              />
+              {reviewDown && <p className="mt-1 text-xs text-gold">{reviewDown}</p>}
+            </label>
+          )}
+          {pending && !review && (
             <label className="mt-3 block">
               <span className="text-xs text-muted">Заметка о выполнении (необязательно)</span>
               <textarea
@@ -89,6 +110,7 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
               />
             </label>
           )}
+          {verdict && <EvaluationCard evaluation={verdict} />}
         </div>
       )}
 
@@ -98,13 +120,33 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
             Начать
           </button>
         )}
-        {pending && (
+        {pending && review && (
           <button
             className="pixel-btn pixel-btn-gold text-sm"
+            disabled={!online || busy || (open && answer.trim().length < 3)}
+            onClick={() => {
+              if (!open) return setOpen(true);
+              evaluate.mutate(
+                { questId: quest.id, answer },
+                {
+                  onSuccess: (r) => {
+                    if (r.status === "evaluated") setVerdict(r.evaluation);
+                    else setReviewDown(r.message);
+                  },
+                },
+              );
+            }}
+          >
+            {evaluate.isPending ? "Орион читает…" : open ? "Отправить Ориону" : "Сдать ответ"}
+          </button>
+        )}
+        {pending && (!review || reviewDown) && (
+          <button
+            className={`pixel-btn text-sm ${review ? "" : "pixel-btn-gold"}`}
             disabled={!online || busy}
             onClick={() => complete.mutate({ questId: quest.id, note: note || undefined })}
           >
-            {complete.isPending ? "Сохраняю…" : "Завершить"}
+            {complete.isPending ? "Сохраняю…" : review ? "Завершить самостоятельно (B)" : "Завершить"}
           </button>
         )}
         {pending && (

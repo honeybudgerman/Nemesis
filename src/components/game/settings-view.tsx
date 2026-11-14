@@ -8,6 +8,7 @@ import { useOnline } from "@/hooks/use-online";
 import { apiFetch } from "@/lib/api-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useUiStore } from "@/stores/ui-store";
+import { AiSettings } from "./ai-settings";
 
 export function SettingsView({ email }: { email: string }) {
   const router = useRouter();
@@ -63,6 +64,8 @@ export function SettingsView({ email }: { email: string }) {
           Отключить анимации
         </label>
       </section>
+
+      <AiSettings />
 
       <section className="pixel-panel p-4">
         <h2 className="font-display text-gold">Резервная копия</h2>
