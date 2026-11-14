@@ -42,3 +42,25 @@ export type CreateQuestInput = z.infer<typeof createQuestSchema>;
 export const deleteGameSchema = z.object({
   confirm: z.literal("УДАЛИТЬ"),
 });
+
+/** Long free text (answers, chat): keep line breaks, drop other control characters. */
+const longText = (min: number, max: number) =>
+  z
+    .string()
+    .transform((s) => s.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim())
+    .pipe(z.string().min(min).max(max));
+
+export const mentorChatSchema = z.object({
+  message: longText(1, 1500),
+});
+
+export const evaluateAnswerSchema = z.object({
+  questId: z.string().uuid(),
+  answer: longText(3, 4000),
+  idempotencyKey: z.string().min(8).max(100).regex(/^[A-Za-z0-9:_-]+$/),
+});
+
+export const aiSettingsSchema = z.object({
+  dailyLimit: z.number().int().min(0).max(200),
+  monthlyBudgetUsd: z.number().min(0).max(100),
+});

@@ -10,6 +10,7 @@ import {
   planWeeklyQuests,
   type PlannedQuest,
 } from "@/engine/quests/planner";
+import { REVIEW_FALLBACK_GRADE } from "@/engine/ai/mentor";
 import { questPeriods } from "@/lib/time";
 import { ApiError, fromDbError } from "@/server/http/errors";
 import { getAdminSupabase } from "@/server/supabase/admin";
@@ -194,6 +195,7 @@ export async function getGameState(db: SupabaseClient, userId: string): Promise<
       .from("quests")
       .select("*")
       .eq("game_profile_id", pid)
+      .neq("status", "REPLACED")
       .or(
         `and(frequency.eq.DAILY,scheduled_date.eq.${periods.today}),` +
           `and(frequency.eq.WEEKLY,scheduled_date.eq.${periods.weekStart}),` +
@@ -309,8 +311,16 @@ export async function completeQuest(
   if (!quest) throw new ApiError("QUEST_NOT_FOUND");
   if (!isSkillCode(quest.category)) throw new ApiError("VALIDATION_ERROR", "Неизвестная категория задания.");
 
-  // Sprint 1: only self-reported quests; QUIZ / AI_REVIEW grading arrives with Orion (Sprint 3).
-  const grade: Grade = SELF_REPORT_GRADE;
+  // Grade: Orion's stored verdict if there is one; plain self-report → A;
+  // a review quest closed by self-report while Orion is unavailable → B.
+  const { data: evaluation, error: evalError } = await db
+    .from("quest_evaluations")
+    .select("grade")
+    .eq("quest_id", quest.id)
+    .maybeSingle<{ grade: Grade }>();
+  // Before the Sprint 3 migration is applied the table is missing: fall back to self-report.
+  if (evalError) console.error("[quests] evaluation lookup failed:", evalError.message);
+  const grade: Grade = evaluation?.grade ?? (quest.evaluation_mode === "SELF_REPORT" ? SELF_REPORT_GRADE : REVIEW_FALLBACK_GRADE);
   const reward = questReward(quest.base_xp, grade, quest.category);
   const periods = questPeriods(new Date(), user.timezone);
 
@@ -387,7 +397,7 @@ export async function createManualQuest(db: SupabaseClient, userId: string, inpu
 export async function exportProgress(db: SupabaseClient, userId: string) {
   const { user, profile } = await loadUserAndProfile(db, userId);
   const pid = profile.id;
-  const tables = ["character_stats", "skills", "quests", "quest_completions", "kingdoms", "resource_ledger", "game_events"] as const;
+  const tables = ["character_stats", "skills", "quests", "quest_completions", "quest_evaluations", "mentor_messages", "ai_usage_logs", "kingdoms", "resource_ledger", "game_events"] as const;
   const results = await Promise.all(
     tables.map((t) => db.from(t).select("*").eq("game_profile_id", pid).order("id")),
   );
