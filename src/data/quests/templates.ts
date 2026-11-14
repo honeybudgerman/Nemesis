@@ -1,0 +1,292 @@
+import type { SkillCode } from "@/data/skills";
+
+export type QuestFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
+export type EvaluationMode = "SELF_REPORT" | "QUIZ" | "AI_REVIEW";
+
+/**
+ * Daily main quests come from three slots (ТЗ §8.1): language, trading study,
+ * discipline/time. One template per slot is picked deterministically per day.
+ */
+export type DailySlot = "language" | "trading" | "discipline" | "optional";
+
+export interface QuestTemplate {
+  code: string;
+  frequency: QuestFrequency;
+  slot?: DailySlot;
+  title: string;
+  description: string;
+  category: SkillCode;
+  difficulty: 1 | 2 | 3 | 4 | 5;
+  minutes: number;
+  successCriteria: string[];
+  evaluationMode: EvaluationMode;
+}
+
+export const DAILY_TEMPLATES: readonly QuestTemplate[] = [
+  // --- language ---
+  {
+    code: "d_en_phrases",
+    frequency: "DAILY",
+    slot: "language",
+    title: "Английский: 10 выражений",
+    description: "Выучите 10 новых английских выражений по одной теме и используйте их.",
+    category: "english",
+    difficulty: 2,
+    minutes: 15,
+    successCriteria: ["Повторить 10 выражений вслух", "Составить 3 собственных предложения"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_en_listening",
+    frequency: "DAILY",
+    slot: "language",
+    title: "Английский: аудирование",
+    description: "Послушайте короткий подкаст или видео на английском и выпишите незнакомые слова.",
+    category: "english",
+    difficulty: 2,
+    minutes: 15,
+    successCriteria: ["Прослушать 10–15 минут", "Выписать минимум 5 новых слов с переводом"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_he_letters",
+    frequency: "DAILY",
+    slot: "language",
+    title: "Иврит: слова и чтение",
+    description: "Повторите алфавит и выучите 8 новых слов на иврите.",
+    category: "hebrew",
+    difficulty: 2,
+    minutes: 15,
+    successCriteria: ["Прочитать вслух 8 слов", "Записать каждое слово от руки"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_he_phrases",
+    frequency: "DAILY",
+    slot: "language",
+    title: "Иврит: бытовые фразы",
+    description: "Выучите 5 бытовых фраз на иврите и проговорите их в диалоге с собой.",
+    category: "hebrew",
+    difficulty: 2,
+    minutes: 15,
+    successCriteria: ["Выучить 5 фраз", "Проговорить мини-диалог вслух"],
+    evaluationMode: "SELF_REPORT",
+  },
+  // --- trading study ---
+  {
+    code: "d_tr_market_review",
+    frequency: "DAILY",
+    slot: "trading",
+    title: "Разбор рынка",
+    description: "Проанализируйте структуру рынка на старшем таймфрейме и запишите сценарии без входа в сделку.",
+    category: "trading_analysis",
+    difficulty: 3,
+    minutes: 20,
+    successCriteria: ["Отметить ключевые уровни", "Записать бычий и медвежий сценарии"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_tr_journal",
+    frequency: "DAILY",
+    slot: "trading",
+    title: "Журнал трейдера",
+    description: "Заполните торговый журнал: соблюдался ли план, какие были эмоции, какие сделки вы пропустили сознательно.",
+    category: "risk_management",
+    difficulty: 3,
+    minutes: 20,
+    successCriteria: ["Отметить соблюдение плана", "Записать один вывод на завтра"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_tr_theory",
+    frequency: "DAILY",
+    slot: "trading",
+    title: "Теория рынка",
+    description: "Изучите одну тему о рыночных механизмах (ликвидность, объём, спред) и законспектируйте.",
+    category: "trading_analysis",
+    difficulty: 3,
+    minutes: 20,
+    successCriteria: ["Прочитать или посмотреть материал", "Написать конспект из 5 пунктов"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_tr_risk_rules",
+    frequency: "DAILY",
+    slot: "trading",
+    title: "Правила риска",
+    description: "Перечитайте свои правила риск-менеджмента и проверьте, где вы могли бы их нарушить.",
+    category: "risk_management",
+    difficulty: 2,
+    minutes: 20,
+    successCriteria: ["Перечитать правила", "Записать одну ситуацию, где нужно отказаться от сделки"],
+    evaluationMode: "SELF_REPORT",
+  },
+  // --- discipline / time ---
+  {
+    code: "d_di_focus",
+    frequency: "DAILY",
+    slot: "discipline",
+    title: "Сессия фокуса",
+    description: "Проведите 20 минут сосредоточенной работы без телефона и уведомлений.",
+    category: "discipline",
+    difficulty: 2,
+    minutes: 20,
+    successCriteria: ["Убрать телефон", "Работать 20 минут без отвлечений"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_tm_plan",
+    frequency: "DAILY",
+    slot: "discipline",
+    title: "План дня",
+    description: "Составьте план на завтра: три главные задачи и время для каждой.",
+    category: "time_management",
+    difficulty: 2,
+    minutes: 20,
+    successCriteria: ["Выбрать 3 главные задачи", "Назначить каждой время в календаре"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_di_review",
+    frequency: "DAILY",
+    slot: "discipline",
+    title: "Вечерний разбор",
+    description: "Подведите итоги дня: что получилось, что помешало, что изменить завтра.",
+    category: "discipline",
+    difficulty: 2,
+    minutes: 20,
+    successCriteria: ["Ответить на три вопроса письменно"],
+    evaluationMode: "SELF_REPORT",
+  },
+  // --- optional ---
+  {
+    code: "d_opt_walk",
+    frequency: "DAILY",
+    slot: "optional",
+    title: "Прогулка без экрана",
+    description: "Необязательно: 15 минут прогулки без телефона, чтобы восстановить внимание.",
+    category: "discipline",
+    difficulty: 1,
+    minutes: 15,
+    successCriteria: ["Пройтись 15 минут без экрана"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_opt_read",
+    frequency: "DAILY",
+    slot: "optional",
+    title: "Чтение на английском",
+    description: "Необязательно: прочитайте одну короткую статью на английском.",
+    category: "english",
+    difficulty: 1,
+    minutes: 10,
+    successCriteria: ["Прочитать статью", "Пересказать главную мысль одной фразой"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "d_opt_tidy",
+    frequency: "DAILY",
+    slot: "optional",
+    title: "Порядок на рабочем месте",
+    description: "Необязательно: 10 минут разберите рабочее место и рабочий стол компьютера.",
+    category: "time_management",
+    difficulty: 1,
+    minutes: 10,
+    successCriteria: ["Разобрать стол", "Закрыть лишние вкладки и файлы"],
+    evaluationMode: "SELF_REPORT",
+  },
+];
+
+export const WEEKLY_TEMPLATES: readonly QuestTemplate[] = [
+  {
+    code: "w_en_check",
+    frequency: "WEEKLY",
+    title: "Проверка английского",
+    description: "Повторите всё выученное за неделю и проверьте себя по карточкам.",
+    category: "english",
+    difficulty: 3,
+    minutes: 45,
+    successCriteria: ["Повторить все выражения недели", "Правильно вспомнить не меньше 80%"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "w_tr_cases",
+    frequency: "WEEKLY",
+    title: "Пять исторических ситуаций",
+    description: "Разберите пять исторических торговых ситуаций: где был вход по плану и где лучше было не входить.",
+    category: "trading_analysis",
+    difficulty: 4,
+    minutes: 60,
+    successCriteria: ["Разобрать 5 графиков", "Для каждого записать решение и причину"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "w_di_focus4",
+    frequency: "WEEKLY",
+    title: "Четыре сессии фокуса",
+    description: "Завершите четыре сессии сосредоточенной работы по 45 минут за неделю.",
+    category: "discipline",
+    difficulty: 3,
+    minutes: 60,
+    successCriteria: ["Провести 4 сессии по 45 минут", "Отметить каждую в журнале"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "w_tm_plan",
+    frequency: "WEEKLY",
+    title: "Недельный план обучения",
+    description: "Составьте и выполните план обучения на неделю.",
+    category: "time_management",
+    difficulty: 3,
+    minutes: 45,
+    successCriteria: ["Записать план в начале недели", "Отметить выполнение в конце недели"],
+    evaluationMode: "SELF_REPORT",
+  },
+];
+
+export const MONTHLY_TEMPLATES: readonly QuestTemplate[] = [
+  {
+    code: "m_en_topic",
+    frequency: "MONTHLY",
+    title: "Освоить тему английского",
+    description: "Выберите одну тему (например, времена глаголов) и освойте её за месяц.",
+    category: "english",
+    difficulty: 4,
+    minutes: 120,
+    successCriteria: ["Выбрать тему", "Пройти упражнения", "Написать текст на 150 слов по теме"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "m_he_set",
+    frequency: "MONTHLY",
+    title: "Набор выражений на иврите",
+    description: "Выучите набор из 50 ивритских выражений.",
+    category: "hebrew",
+    difficulty: 4,
+    minutes: 120,
+    successCriteria: ["Выучить 50 выражений", "Проверить себя по карточкам"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "m_tr_checklist",
+    frequency: "MONTHLY",
+    title: "Торговый чек-лист",
+    description: "Создайте личный чек-лист перед входом в сделку, включающий правила риска.",
+    category: "risk_management",
+    difficulty: 4,
+    minutes: 120,
+    successCriteria: ["Составить чек-лист", "Проверить его на 10 исторических ситуациях"],
+    evaluationMode: "SELF_REPORT",
+  },
+  {
+    code: "m_tr_journal_review",
+    frequency: "MONTHLY",
+    title: "Анализ журнала сделок",
+    description: "Проанализируйте журнал за месяц: соблюдение плана, повторяющиеся ошибки, выводы.",
+    category: "trading_analysis",
+    difficulty: 4,
+    minutes: 120,
+    successCriteria: ["Найти 3 повторяющиеся ошибки", "Записать правила, которые их предотвратят"],
+    evaluationMode: "SELF_REPORT",
+  },
+];
