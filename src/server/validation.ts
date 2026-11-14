@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { BUILDING_TYPES } from "@/data/realm/buildings";
+import { UNIT_TYPES } from "@/data/realm/units";
 import { SKILL_CODES } from "@/data/skills";
 import { MAX_DAILY_MINUTES, MIN_DAILY_MINUTES } from "@/engine/quests/planner";
 import { isValidTimeZone } from "@/lib/time";
@@ -63,4 +65,26 @@ export const evaluateAnswerSchema = z.object({
 export const aiSettingsSchema = z.object({
   dailyLimit: z.number().int().min(0).max(200),
   monthlyBudgetUsd: z.number().min(0).max(100),
+});
+
+const idempotencyKey = z.string().min(8).max(100).regex(/^[A-Za-z0-9:_-]+$/);
+const territoryCode = z.string().regex(/^[a-z_]{2,40}$/);
+
+export const buildSchema = z.object({
+  territoryCode,
+  buildingType: z.enum(BUILDING_TYPES),
+  idempotencyKey,
+});
+
+export const recruitSchema = z.object({
+  unitType: z.enum(UNIT_TYPES),
+  quantity: z.number().int().min(1).max(100),
+  idempotencyKey,
+});
+
+export const attackSchema = z.object({
+  territoryCode,
+  tactic: z.enum(["cautious", "balanced", "aggressive"]),
+  commander: z.enum(["self", "none"]),
+  idempotencyKey,
 });

@@ -14,6 +14,7 @@ import { REVIEW_FALLBACK_GRADE } from "@/engine/ai/mentor";
 import { questPeriods } from "@/lib/time";
 import { ApiError, fromDbError } from "@/server/http/errors";
 import { getAdminSupabase } from "@/server/supabase/admin";
+import { syncWorld } from "@/server/services/realm-service";
 import { getRivalSummary, syncRival } from "@/server/services/rival-service";
 import type {
   CreateQuestInput,
@@ -177,6 +178,8 @@ export async function getGameState(db: SupabaseClient, userId: string): Promise<
 
   const pid = profile.id;
   const rival = await loadRivalSummary(db, userId, pid, user.timezone, periods.weekStart);
+  // Economy days and Kael's campaigns (one bounded batch); never blocks the throne room.
+  await syncWorld(db, userId, 1).catch((e) => console.error("world sync failed", e instanceof Error ? e.message : e));
   const [stats, skills, kingdom, quests, events, weekCompletions] = await Promise.all([
     db
       .from("character_stats")
@@ -414,15 +417,30 @@ export async function exportProgress(db: SupabaseClient, userId: string) {
     if (a.error) throw fromDbError(a.error);
     rivalActions = a.data ?? [];
   }
+  const realm: Record<string, unknown> = {};
+  const hk = await db.from("kingdoms").select("id").eq("game_profile_id", pid).eq("owner_type", "HERO").maybeSingle();
+  if (hk.data) {
+    const [terr, bld, army, battles] = await Promise.all([
+      db.from("territories").select("*").eq("game_profile_id", pid).order("territory_code"),
+      db.from("buildings").select("*").eq("kingdom_id", hk.data.id).order("id"),
+      db.from("armies").select("*, army_units(*)").eq("kingdom_id", hk.data.id),
+      db.from("battles").select("*").eq("game_profile_id", pid).order("resolved_at"),
+    ]);
+    realm.territories = terr.data ?? [];
+    realm.buildings = bld.data ?? [];
+    realm.armies = army.data ?? [];
+    realm.battles = battles.data ?? [];
+  }
   return {
     format: "nemesis-export",
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     user: { display_name: user.display_name, timezone: user.timezone, daily_minutes: user.daily_minutes },
     game_profile: profile,
     ...data,
     rival_profile: rival.data,
     rival_actions: rivalActions,
+    ...realm,
   };
 }
 
