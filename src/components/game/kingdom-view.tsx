@@ -378,13 +378,13 @@ const RISK_STYLE = {
 
 function AttackPanel({ t, k, onResult }: { t: TerritoryView; k: KingdomScreen; onResult: (r: AttackResponse["battle"]) => void }) {
   const [tactic, setTactic] = useState<Tactic>("balanced");
-  const [commander, setCommander] = useState<"self" | "none">("self");
+  const [commander, setCommander] = useState<"self" | "none" | "general">(k.general && k.general.skill > k.heroStrategy ? "general" : "self");
   const attack = useAttack();
   const risk = estimateRisk({
     army: k.army.units,
     morale: k.army.morale,
     commander,
-    strategy: k.heroStrategy,
+    strategy: commander === "general" && k.general ? k.general.skill : k.heroStrategy,
     tactic,
     target: { terrain: t.terrain, garrison: t.garrison, fortification: t.fortification, resource: t.resource },
   });
@@ -409,10 +409,15 @@ function AttackPanel({ t, k, onResult }: { t: TerritoryView; k: KingdomScreen; o
       </fieldset>
       <fieldset className="mt-2">
         <legend className="text-xs text-muted">Командир</legend>
-        <div className="mt-1 grid grid-cols-2 gap-1">
+        <div className={`mt-1 grid gap-1 ${k.general ? "grid-cols-3" : "grid-cols-2"}`}>
           <button className={`pixel-btn px-1 text-xs ${commander === "self" ? "border-gold text-gold" : ""}`} aria-pressed={commander === "self"} onClick={() => setCommander("self")}>
             Лично (Стратегия {k.heroStrategy})
           </button>
+          {k.general && (
+            <button className={`pixel-btn px-1 text-xs ${commander === "general" ? "border-gold text-gold" : ""}`} aria-pressed={commander === "general"} onClick={() => setCommander("general")}>
+              {k.general.name.split(" ")[0]} (военное дело {k.general.skill})
+            </button>
+          )}
           <button className={`pixel-btn px-1 text-xs ${commander === "none" ? "border-gold text-gold" : ""}`} aria-pressed={commander === "none"} onClick={() => setCommander("none")}>
             Без командира
           </button>

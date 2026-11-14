@@ -10,7 +10,7 @@ import { getAdminSupabase } from "@/server/supabase/admin";
  * booked against the player's daily request limit and monthly budget first,
  * and its tokens and cost are written to ai_usage_logs.
  */
-export type AiKind = "MENTOR_CHAT" | "EVALUATE" | "GENERATE_QUESTS";
+export type AiKind = "MENTOR_CHAT" | "EVALUATE" | "GENERATE_QUESTS" | "COURT_DIALOGUE";
 
 export type GatewayResult<T> =
   | AiResult<T>

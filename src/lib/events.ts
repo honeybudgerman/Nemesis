@@ -1,8 +1,11 @@
+import { POSITION_DEFS, POSITIONS, RELATIONSHIP_STATUSES, STATUS_LABELS } from "@/data/court/npcs";
 import { BUILDINGS, BUILDING_TYPES } from "@/data/realm/buildings";
 import { UNITS, UNIT_TYPES } from "@/data/realm/units";
 import type { GameEventView } from "@/types/game";
 
 const buildingName = (v: unknown) => ((BUILDING_TYPES as readonly unknown[]).includes(v) ? BUILDINGS[v as (typeof BUILDING_TYPES)[number]].name : "постройка");
+const statusName = (v: unknown) => ((RELATIONSHIP_STATUSES as readonly unknown[]).includes(v) ? STATUS_LABELS[v as (typeof RELATIONSHIP_STATUSES)[number]] : "отношения изменились");
+const positionName = (v: unknown) => ((POSITIONS as readonly unknown[]).includes(v) ? POSITION_DEFS[v as (typeof POSITIONS)[number]].name : "должность");
 const unitName = (v: unknown) => ((UNIT_TYPES as readonly unknown[]).includes(v) ? UNITS[v as (typeof UNIT_TYPES)[number]].name : "войска");
 
 /** Human-readable chronicle line for a game event. Text is rendered as plain React text (escaped). */
@@ -31,6 +34,18 @@ export function describeEvent(e: GameEventView): string {
       return `Победа в битве: ${String(p.territory ?? "")} теперь ваша земля.`;
     case "BATTLE_LOST":
       return `Поражение у ${String(p.territory ?? "")}. Армия отступила.`;
+    case "COURT_FOUNDED":
+      return "При дворе собрались первые придворные. Их судьбы теперь связаны с вашей.";
+    case "COURT_JOINED":
+      return `Ко двору присоединяется ${String(p.name ?? "новый придворный")}.`;
+    case "COURT_RELATIONSHIP":
+      return `${String(p.name ?? "")}: ${statusName(p.to).toLowerCase()}.`;
+    case "COURT_EVENT":
+      return `${String(p.title ?? "Событие при дворе")}: ${String(p.choice ?? "")}.`;
+    case "POSITION_ASSIGNED":
+      return p.npc ? `${String(p.name ?? "")} назначен(а): ${positionName(p.position).toLowerCase()}.` : `Должность «${positionName(p.position)}» свободна.`;
+    case "TERRITORY_JOINED":
+      return `${String(p.territory ?? "Территория")} мирно присоединяется к королевству.`;
     case "KAEL_CONQUEST":
       return `Каэль захватил ${String(p.territory ?? "")}.`;
     default:

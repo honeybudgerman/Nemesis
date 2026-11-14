@@ -8,7 +8,8 @@ import { TACTICS, TIER_MODIFIER, UNIT_TYPES, UNITS, unitPower, type Tactic, type
 import { createSeededRandom, type Rng } from "@/lib/random";
 
 export type Army = Partial<Record<UnitType, number>>;
-export type Commander = "self" | "none";
+/** "self": the ruler (Strategy stat); "general": the appointed court commander (military skill). */
+export type Commander = "self" | "none" | "general";
 
 export interface BattleInput {
   army: Army;
@@ -55,7 +56,7 @@ export function moraleModifier(morale: number): number {
 }
 
 export function commanderModifier(c: Commander, strategy: number): number {
-  return c === "self" ? 1 + clamp(strategy, 0, 100) / 200 : 1;
+  return c === "none" ? 1 : 1 + clamp(strategy, 0, 100) / 200;
 }
 
 /** Defensive strength before the random roll: garrison × fortifications × terrain. */

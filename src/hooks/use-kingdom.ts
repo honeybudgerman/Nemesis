@@ -110,7 +110,7 @@ export interface AttackResponse {
 }
 
 export function useAttack() {
-  return useKingdomMutation<{ territoryCode: string; tactic: Tactic; commander: "self" | "none" }, AttackResponse>(
+  return useKingdomMutation<{ territoryCode: string; tactic: Tactic; commander: "self" | "none" | "general" }, AttackResponse>(
     "/api/kingdom/attack",
     (v) => `${v.territoryCode}:${v.tactic}:${v.commander}`,
     (v) => ({ territoryCode: v.territoryCode, tactic: v.tactic, commander: v.commander }),

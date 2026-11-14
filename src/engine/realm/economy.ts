@@ -23,6 +23,8 @@ export interface EconomyState {
   buildings: EconomyBuilding[];
   territories: { resource: TerritoryResource }[];
   army: Army;
+  /** Flat daily income from court positions (treasurer, chancellor, envoy). */
+  bonus?: Partial<Omit<Resources, "command_points">>;
 }
 
 export const TERRITORY_INCOME: Readonly<Record<TerritoryResource, number>> = { gold: 5, food: 10, knowledge: 1, influence: 1 };
@@ -57,6 +59,7 @@ export function dailyProduction(state: EconomyState, dayEnd: Date): Omit<Resourc
     }
   }
   for (const t of state.territories) p[t.resource] += TERRITORY_INCOME[t.resource];
+  for (const [res, v] of Object.entries(state.bonus ?? {}) as [keyof typeof p, number][]) p[res] += v;
   return p;
 }
 

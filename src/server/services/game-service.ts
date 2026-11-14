@@ -431,9 +431,17 @@ export async function exportProgress(db: SupabaseClient, userId: string) {
     realm.armies = army.data ?? [];
     realm.battles = battles.data ?? [];
   }
+  const [cn, cr, ce, cm] = await Promise.all([
+    db.from("court_npcs").select("*").eq("game_profile_id", pid).order("npc_code"),
+    db.from("court_relationships").select("*").eq("game_profile_id", pid),
+    db.from("court_events").select("*").eq("game_profile_id", pid).order("created_at"),
+    db.from("court_messages").select("*").eq("game_profile_id", pid).order("created_at"),
+  ]);
+  for (const x of [cn, cr, ce, cm]) if (x.error) throw fromDbError(x.error);
+  const court = { court_npcs: cn.data ?? [], court_relationships: cr.data ?? [], court_events: ce.data ?? [], court_messages: cm.data ?? [] };
   return {
     format: "nemesis-export",
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     user: { display_name: user.display_name, timezone: user.timezone, daily_minutes: user.daily_minutes },
     game_profile: profile,
@@ -441,6 +449,7 @@ export async function exportProgress(db: SupabaseClient, userId: string) {
     rival_profile: rival.data,
     rival_actions: rivalActions,
     ...realm,
+    ...court,
   };
 }
 

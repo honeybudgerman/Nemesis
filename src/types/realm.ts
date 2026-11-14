@@ -70,6 +70,8 @@ export interface KingdomScreen {
   upkeep: number;
   army: { units: Army; size: number; cap: number; power: number; morale: number };
   heroStrategy: number;
+  /** Appointed court commander able to lead the army. */
+  general: { code: string; name: string; skill: number } | null;
   construction: { type: BuildingType; level: number; territory: string; completedAt: string } | null;
   territories: TerritoryView[];
   recruitOptions: RecruitOption[];
@@ -80,5 +82,5 @@ export interface KingdomScreen {
 export interface AttackInput {
   territoryCode: string;
   tactic: Tactic;
-  commander: "self" | "none";
+  commander: "self" | "none" | "general";
 }

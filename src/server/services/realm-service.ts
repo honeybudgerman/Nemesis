@@ -4,7 +4,7 @@ import { BUILDINGS, maxLevelFor, buildingCost, buildingMinutes, type BuildingTyp
 import { HOME_TERRITORY, MAP_CODE, neighboursOf, TERRITORIES, type Terrain, type TerritoryOwner, type TerritoryResource } from "@/data/realm/map";
 import { maxArmySize, STARTING_ARMY, UNIT_TYPES, UNITS, type Tactic, type UnitType } from "@/data/realm/units";
 import { SIMULATION_BATCH_DAYS, SIMULATION_MAX_BATCHES_PER_REQUEST } from "@/data/rival/kael";
-import { armyPower, armySize, resolveBattle, type Army, type BattleResult } from "@/engine/realm/battle";
+import { armyPower, armySize, resolveBattle, type Army, type BattleResult, type Commander } from "@/engine/realm/battle";
 import type { WorldTerritory } from "@/engine/realm/campaign";
 import { castleLevelAt, dailyProduction, dailyUpkeep, maxCommandPoints, type EconomyState } from "@/engine/realm/economy";
 import { buildOptionsFor, completedLevel, recruitOptionsFor, type RulesBuilding } from "@/engine/realm/rules";
@@ -12,6 +12,8 @@ import { simulateWorldBatch } from "@/engine/realm/world";
 import { countPendingDays } from "@/engine/simulation/rival";
 import { hashString } from "@/lib/random";
 import { addDays, parseLocalDate, questPeriods, startOfLocalDay } from "@/lib/time";
+import { NPC_BY_CODE, type NpcStats, type Position } from "@/data/court/npcs";
+import { commanderSkill, courtEconomyBonus } from "@/engine/court/court";
 import { ApiError, fromDbError } from "@/server/http/errors";
 import { getAdminSupabase } from "@/server/supabase/admin";
 import { ensureRival } from "@/server/services/rival-service";
@@ -21,6 +23,18 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await getAdminSupabase().rpc(fn, args);
   if (error) throw fromDbError(error);
   return data as T;
+}
+
+interface CourtNpcRowLite {
+  npc_code: string;
+  position: Position | null;
+  loyalty: number;
+  affection: number;
+  trust: number;
+  ambition: number;
+  jealousy: number;
+  influence: number;
+  recruited_at: string | null;
 }
 
 const num = (v: number | string | null | undefined) => (v == null ? 0 : Number(v));
@@ -51,7 +65,7 @@ interface BuildingRow {
   completed_at: string;
 }
 
-interface Realm {
+export interface Realm {
   profileId: string;
   timezone: string;
   kingdom: {
@@ -70,6 +84,14 @@ interface Realm {
   morale: number;
   strategy: number;
   rival: { rngSeed: number; level: number } | null;
+  court: { npcs: CourtNpcLite[]; resolved: Record<string, { choice: string; day: string }> };
+}
+
+interface CourtNpcLite {
+  code: string;
+  position: Position | null;
+  stats: NpcStats;
+  recruited: boolean;
 }
 
 async function loadProfile(db: SupabaseClient, userId: string) {
@@ -84,7 +106,7 @@ async function loadProfile(db: SupabaseClient, userId: string) {
 }
 
 async function loadRealm(db: SupabaseClient, profileId: string, timezone: string): Promise<Realm | null> {
-  const [k, terr, rival, stats] = await Promise.all([
+  const [k, terr, rival, stats, courtNpcs, courtEvents] = await Promise.all([
     db
       .from("kingdoms")
       .select("id, name, gold, food, knowledge, influence, command_points, last_economy_day")
@@ -94,8 +116,10 @@ async function loadRealm(db: SupabaseClient, profileId: string, timezone: string
     db.from("territories").select("*").eq("game_profile_id", profileId).order("pos_y").order("pos_x"),
     db.from("rival_profiles").select("rng_seed, level").eq("game_profile_id", profileId).maybeSingle(),
     db.from("character_stats").select("strategy").eq("game_profile_id", profileId).eq("character_type", "HERO").maybeSingle(),
+    db.from("court_npcs").select("npc_code, position, loyalty, affection, trust, ambition, jealousy, influence, recruited_at").eq("game_profile_id", profileId),
+    db.from("court_events").select("event_code, selected_choice, resolved_day").eq("game_profile_id", profileId).eq("status", "RESOLVED"),
   ]);
-  for (const x of [k, terr, rival, stats]) if (x.error) throw fromDbError(x.error);
+  for (const x of [k, terr, rival, stats, courtNpcs, courtEvents]) if (x.error) throw fromDbError(x.error);
   if (!k.data) throw new ApiError("KINGDOM_NOT_FOUND");
   const territories = (terr.data ?? []) as TerritoryRow[];
   if (territories.length === 0) return null;
@@ -131,6 +155,17 @@ async function loadRealm(db: SupabaseClient, profileId: string, timezone: string
     morale: a.data?.morale ?? 80,
     strategy: stats.data?.strategy ?? 10,
     rival: rival.data ? { rngSeed: num(rival.data.rng_seed), level: rival.data.level } : null,
+    court: {
+      npcs: ((courtNpcs.data ?? []) as CourtNpcRowLite[]).map((n) => ({
+        code: n.npc_code,
+        position: n.position,
+        recruited: n.recruited_at != null,
+        stats: { loyalty: n.loyalty, affection: n.affection, trust: n.trust, ambition: n.ambition, jealousy: n.jealousy, influence: n.influence },
+      })),
+      resolved: Object.fromEntries(
+        ((courtEvents.data ?? []) as { event_code: string; selected_choice: string; resolved_day: string }[]).map((e) => [e.event_code, { choice: e.selected_choice, day: e.resolved_day }]),
+      ),
+    },
   };
 }
 
@@ -160,7 +195,16 @@ function economyOf(r: Realm): EconomyState {
     buildings: r.buildings.map((b) => ({ type: b.building_type, level: b.level, terrain: b.terrain, completedAt: b.completed_at })),
     territories: r.territories.filter((t) => t.owner_type === "HERO").map((t) => ({ resource: t.resource_type })),
     army: r.army,
+    bonus: courtEconomyBonus(r.court.npcs, r.court),
   };
+}
+
+/** The appointed court commander, if any and loyal enough to lead. */
+export function generalOf(r: Realm): { code: string; name: string; skill: number } | null {
+  const n = r.court.npcs.find((x) => x.position === "commander" && x.recruited);
+  if (!n) return null;
+  const skill = commanderSkill(n.code, n.stats, r.court);
+  return skill == null ? null : { code: n.code, name: NPC_BY_CODE[n.code]?.name ?? n.code, skill };
 }
 
 function worldOf(r: Realm): WorldTerritory[] {
@@ -321,6 +365,7 @@ async function screen(db: SupabaseClient, r: Realm, pendingDays: number): Promis
     upkeep: dailyUpkeep(r.army),
     army: { units: r.army, size, cap, power: Math.round(armyPower(r.army)), morale: r.morale },
     heroStrategy: r.strategy,
+    general: generalOf(r),
     construction: building
       ? { type: building.building_type, level: building.level, territory: r.territories.find((t) => t.id === building.territory_id)?.name ?? "", completedAt: building.completed_at }
       : null,
@@ -401,18 +446,20 @@ export interface AttackOutcome {
 export async function attack(
   db: SupabaseClient,
   userId: string,
-  input: { territoryCode: string; tactic: Tactic; commander: "self" | "none"; idempotencyKey: string },
+  input: { territoryCode: string; tactic: Tactic; commander: Commander; idempotencyKey: string },
 ): Promise<AttackOutcome> {
   let { realm } = await syncWorld(db, userId, 1);
   for (let attempt = 0; attempt < 3; attempt++) {
     const t = realm.territories.find((x) => x.territory_code === input.territoryCode);
     if (!t) throw new ApiError("VALIDATION_ERROR", "Неизвестная территория.");
     const seed = hashString(`battle:${realm.profileId}:${input.idempotencyKey}`);
+    const general = generalOf(realm);
+    if (input.commander === "general" && !general) throw new ApiError("NO_COMMANDER");
     const result = resolveBattle({
       army: realm.army,
       morale: realm.morale,
       commander: input.commander,
-      strategy: realm.strategy,
+      strategy: input.commander === "general" ? general!.skill : realm.strategy,
       tactic: input.tactic,
       target: { terrain: t.terrain_type, garrison: t.garrison_strength, fortification: t.fortification_level, resource: t.resource_type },
       seed,
@@ -433,7 +480,7 @@ export async function attack(
         morale_after: result.moraleAfter,
         seed,
         tactic: input.tactic,
-        attacker_snapshot: { army: expectedArmy, morale: realm.morale, commander: input.commander, power: result.attackerPower },
+        attacker_snapshot: { army: expectedArmy, morale: realm.morale, commander: input.commander === "general" ? `npc:${general!.code}` : input.commander, power: result.attackerPower },
         defender_snapshot: { garrison: t.garrison_strength, fortification: t.fortification_level, terrain: t.terrain_type, power: result.defenderPower },
       },
     });

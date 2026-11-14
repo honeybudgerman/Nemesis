@@ -25,6 +25,12 @@ export type ErrorCode =
   | "ARMY_FULL"
   | "NO_COMMAND_POINTS"
   | "NOT_ENOUGH_ARMY"
+  | "NO_COMMANDER"
+  | "ALREADY_INTERACTED"
+  | "EVENT_NOT_OPEN"
+  | "NPC_NOT_AVAILABLE"
+  | "TERRITORY_UNAVAILABLE"
+  | "CHOICE_UNAVAILABLE"
   | "NOT_CONFIGURED"
   | "INTERNAL";
 
@@ -53,6 +59,12 @@ const STATUS: Record<ErrorCode, number> = {
   ARMY_FULL: 409,
   NO_COMMAND_POINTS: 409,
   NOT_ENOUGH_ARMY: 409,
+  NO_COMMANDER: 409,
+  ALREADY_INTERACTED: 409,
+  EVENT_NOT_OPEN: 409,
+  NPC_NOT_AVAILABLE: 409,
+  TERRITORY_UNAVAILABLE: 409,
+  CHOICE_UNAVAILABLE: 409,
   NOT_CONFIGURED: 503,
   INTERNAL: 500,
 };
@@ -82,6 +94,12 @@ const MESSAGES: Record<ErrorCode, string> = {
   ARMY_FULL: "Армия заполнена. Улучшите замок или казармы.",
   NO_COMMAND_POINTS: "Нет очков командования. Они восстанавливаются каждый день.",
   NOT_ENOUGH_ARMY: "Некого вести в бой: наймите войска.",
+  NO_COMMANDER: "Командующий не назначен или не готов вести армию.",
+  ALREADY_INTERACTED: "Сегодня вы уже уделили время этому персонажу.",
+  EVENT_NOT_OPEN: "Это событие уже решено.",
+  NPC_NOT_AVAILABLE: "Этого персонажа пока нет при дворе.",
+  TERRITORY_UNAVAILABLE: "Эта территория сейчас недоступна.",
+  CHOICE_UNAVAILABLE: "Этот вариант сейчас недоступен.",
   NOT_CONFIGURED: "Сервер не настроен: не заданы ключи Supabase.",
   INTERNAL: "Внутренняя ошибка сервера.",
 };
