@@ -18,12 +18,12 @@ export default async function Home() {
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center justify-center gap-6 px-4 py-10 text-center">
       <div className="flex items-end gap-6">
         <Portrait kind="hero" size={72} title="Герой" />
-        <span className="font-pixel text-2xl text-muted pb-6">vs</span>
+        <span className="font-display text-2xl text-muted pb-6">vs</span>
         <Portrait kind="rival" size={72} title="Каэль Валькарион" />
       </div>
       <div>
-        <h1 className="font-pixel text-4xl text-gold tracking-widest sm:text-5xl">NEMESIS</h1>
-        <p className="font-pixel mt-1 text-muted">Восхождение двух королей</p>
+        <h1 className="font-display text-4xl text-gold tracking-widest sm:text-5xl">NEMESIS</h1>
+        <p className="font-display mt-1 text-muted">Восхождение двух королей</p>
       </div>
       <p className="text-text/85">
         Реальные дела — реальная сила. Выполняй задания в жизни, развивай героя и королевство и соревнуйся с Каэлем,
@@ -40,7 +40,7 @@ export default async function Home() {
         </div>
       ) : (
         <div className="pixel-panel w-full p-4 text-left text-sm">
-          <div className="font-pixel text-danger">Сервер не настроен</div>
+          <div className="font-display text-danger">Сервер не настроен</div>
           <p className="mt-1 text-text/85">
             Задайте переменные окружения Supabase из <code>.env.example</code> и перезапустите приложение.
           </p>

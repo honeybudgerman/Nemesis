@@ -6,7 +6,7 @@ import Link from "next/link";
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-4 py-10 text-center">
-      <h1 className="font-pixel text-2xl text-gold">Что-то пошло не так</h1>
+      <h1 className="font-display text-2xl text-gold">Что-то пошло не так</h1>
       <div className="pixel-panel w-full p-4 text-left text-sm text-text/85">
         <p>Сервер не смог загрузить данные королевства.</p>
         <p className="mt-2">

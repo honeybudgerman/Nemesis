@@ -15,7 +15,7 @@ const ITEMS: Item[] = [
   { href: "/dashboard", label: "Тронный зал", icon: "👑" },
   { href: "/quests", label: "Задания", icon: "📜" },
   { href: "/skills", label: "Навыки", icon: "📚" },
-  { href: "/rival", label: "Соперник", icon: "⚔️", sprint: 2 },
+  { href: "/rival", label: "Соперник", icon: "⚔️" },
   { href: "/mentor", label: "Наставник", icon: "🔮", sprint: 3 },
   { href: "/kingdom", label: "Королевство", icon: "🏰", sprint: 4 },
   { href: "/court", label: "Двор", icon: "🎭", sprint: 5 },
@@ -38,7 +38,7 @@ export function GameNav() {
             <Link
               key={i.href}
               href={i.href}
-              className={`px-2 py-1 text-sm font-pixel border-2 ${path.startsWith(i.href) ? "border-gold text-gold" : "border-transparent hover:border-border"}`}
+              className={`px-2 py-1 text-sm font-display border-2 ${path.startsWith(i.href) ? "border-gold text-gold" : "border-transparent hover:border-border"}`}
             >
               {i.icon} {i.label}
             </Link>
@@ -58,7 +58,7 @@ export function GameNav() {
           <Link
             key={i.href}
             href={i.href}
-            className={`flex flex-1 flex-col items-center py-2 text-xs font-pixel ${path.startsWith(i.href) ? "text-gold" : "text-muted"}`}
+            className={`flex flex-1 flex-col items-center py-2 text-xs font-display ${path.startsWith(i.href) ? "text-gold" : "text-muted"}`}
           >
             <span className="text-lg" aria-hidden>
               {i.icon}

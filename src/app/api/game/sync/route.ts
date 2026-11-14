@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Explicit sync: rolls the world forward to "now" (expires overdue quests,
- * issues new ones) and returns the authoritative state. Rival catch-up
- * simulation will hook in here in Sprint 2.
+ * issues new ones), advances Kael by one batch and returns the authoritative
+ * state. Long rival catch-ups continue through /api/rival/sync.
  */
 export const POST = handler(async () => {
   const { user, db } = await requireUser();

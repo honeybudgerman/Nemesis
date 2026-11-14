@@ -8,7 +8,7 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
       <OfflineBanner />
       <header className="border-b-2 border-border bg-panel/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-2">
-          <Link href="/dashboard" className="font-pixel text-lg text-gold tracking-wider">
+          <Link href="/dashboard" className="font-display text-lg text-gold tracking-wider">
             NEMESIS
           </Link>
           <div className="flex-1">

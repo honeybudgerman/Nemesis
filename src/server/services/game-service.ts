@@ -13,6 +13,7 @@ import {
 import { questPeriods } from "@/lib/time";
 import { ApiError, fromDbError } from "@/server/http/errors";
 import { getAdminSupabase } from "@/server/supabase/admin";
+import { getRivalSummary, syncRival } from "@/server/services/rival-service";
 import type {
   CreateQuestInput,
   CompleteQuestInput,
@@ -174,6 +175,7 @@ export async function getGameState(db: SupabaseClient, userId: string): Promise<
   const periods = await syncQuests(userId, profile.id, user, now);
 
   const pid = profile.id;
+  const rival = await loadRivalSummary(db, userId, pid, user.timezone, periods.weekStart);
   const [stats, skills, kingdom, quests, events, weekCompletions] = await Promise.all([
     db
       .from("character_stats")
@@ -266,8 +268,24 @@ export async function getGameState(db: SupabaseClient, userId: string): Promise<
     recentEvents: ((events.data ?? []) as { id: string; event_type: string; payload: Record<string, unknown>; created_at: string }[]).map(
       (e): GameEventView => ({ id: e.id, type: e.event_type, payload: e.payload ?? {}, createdAt: e.created_at }),
     ),
+    rival,
     serverTime: now.toISOString(),
   };
+}
+
+/**
+ * Advance Kael by at most one batch while loading state, so a page load stays
+ * fast; the client finishes a long catch-up through /api/rival/sync. A rival
+ * failure must never take the throne room down with it.
+ */
+async function loadRivalSummary(db: SupabaseClient, userId: string, profileId: string, timezone: string, weekStart: string) {
+  try {
+    const sync = await syncRival(db, userId, profileId, timezone, 1);
+    return await getRivalSummary(db, profileId, weekStart, sync.pendingDays);
+  } catch (e) {
+    console.error("rival sync failed", e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 
@@ -378,13 +396,23 @@ export async function exportProgress(db: SupabaseClient, userId: string) {
     if (results[i].error) throw fromDbError(results[i].error);
     data[t] = results[i].data;
   });
+  const rival = await db.from("rival_profiles").select("*").eq("game_profile_id", pid).maybeSingle();
+  if (rival.error) throw fromDbError(rival.error);
+  let rivalActions: unknown[] = [];
+  if (rival.data) {
+    const a = await db.from("rival_actions").select("*").eq("rival_id", rival.data.id).order("simulation_day").order("action_index");
+    if (a.error) throw fromDbError(a.error);
+    rivalActions = a.data ?? [];
+  }
   return {
     format: "nemesis-export",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     user: { display_name: user.display_name, timezone: user.timezone, daily_minutes: user.daily_minutes },
     game_profile: profile,
     ...data,
+    rival_profile: rival.data,
+    rival_actions: rivalActions,
   };
 }
 
