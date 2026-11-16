@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { INTERACTIONS, POSITIONS } from "@/data/court/npcs";
 import { BUILDING_TYPES } from "@/data/realm/buildings";
 import { UNIT_TYPES } from "@/data/realm/units";
 import { SKILL_CODES } from "@/data/skills";
@@ -85,6 +86,26 @@ export const recruitSchema = z.object({
 export const attackSchema = z.object({
   territoryCode,
   tactic: z.enum(["cautious", "balanced", "aggressive"]),
-  commander: z.enum(["self", "none"]),
+  commander: z.enum(["self", "none", "general"]),
+  idempotencyKey,
+});
+
+const npcCode = z.string().regex(/^[a-z_]{2,40}$/);
+
+export const courtInteractSchema = z.object({
+  npcCode,
+  action: z.enum(INTERACTIONS),
+  idempotencyKey,
+});
+
+export const courtChooseSchema = z.object({
+  eventId: z.string().uuid(),
+  choice: z.string().regex(/^[a-z0-9_]{1,40}$/),
+  idempotencyKey,
+});
+
+export const courtAssignSchema = z.object({
+  position: z.enum(POSITIONS),
+  npcCode: npcCode.nullable(),
   idempotencyKey,
 });

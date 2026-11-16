@@ -20,7 +20,7 @@ const ITEMS: Item[] = [
   { href: "/rival", label: "Соперник", short: "Каэль", icon: "⚔️" },
   { href: "/mentor", label: "Наставник", short: "Орион", icon: "🔮" },
   { href: "/kingdom", label: "Королевство", short: "Земли", icon: "🏰" },
-  { href: "/court", label: "Двор", icon: "🎭", sprint: 5 },
+  { href: "/court", label: "Двор", icon: "🎭" },
   { href: "/chronicles", label: "Хроники", icon: "📖", sprint: 6 },
 ];
 
