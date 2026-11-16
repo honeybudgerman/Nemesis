@@ -14,7 +14,7 @@ import { REVIEW_FALLBACK_GRADE } from "@/engine/ai/mentor";
 import { questPeriods } from "@/lib/time";
 import { ApiError, fromDbError } from "@/server/http/errors";
 import { getAdminSupabase } from "@/server/supabase/admin";
-import { syncWorld } from "@/server/services/realm-service";
+import { getStorySummary } from "@/server/services/story-service";
 import { getRivalSummary, syncRival } from "@/server/services/rival-service";
 import type {
   CreateQuestInput,
@@ -178,8 +178,9 @@ export async function getGameState(db: SupabaseClient, userId: string): Promise<
 
   const pid = profile.id;
   const rival = await loadRivalSummary(db, userId, pid, user.timezone, periods.weekStart);
-  // Economy days and Kael's campaigns (one bounded batch); never blocks the throne room.
-  await syncWorld(db, userId, 1).catch((e) => console.error("world sync failed", e instanceof Error ? e.message : e));
+  // Economy days and Kael's campaigns (one bounded batch) run inside the story
+  // load, which also unlocks earned achievements; never blocks the throne room.
+  const story = await getStorySummary(db, userId);
   const [stats, skills, kingdom, quests, events, weekCompletions] = await Promise.all([
     db
       .from("character_stats")
@@ -274,6 +275,7 @@ export async function getGameState(db: SupabaseClient, userId: string): Promise<
       (e): GameEventView => ({ id: e.id, type: e.event_type, payload: e.payload ?? {}, createdAt: e.created_at }),
     ),
     rival,
+    story,
     serverTime: now.toISOString(),
   };
 }
@@ -439,9 +441,17 @@ export async function exportProgress(db: SupabaseClient, userId: string) {
   ]);
   for (const x of [cn, cr, ce, cm]) if (x.error) throw fromDbError(x.error);
   const court = { court_npcs: cn.data ?? [], court_relationships: cr.data ?? [], court_events: ce.data ?? [], court_messages: cm.data ?? [] };
+  const [sp, ach, ttl, inv] = await Promise.all([
+    db.from("story_progress").select("*").eq("game_profile_id", pid).order("started_at"),
+    db.from("achievements").select("*").eq("game_profile_id", pid).order("unlocked_at"),
+    db.from("unlocked_titles").select("*").eq("game_profile_id", pid).order("unlocked_at"),
+    db.from("inventory_items").select("*").eq("game_profile_id", pid).order("acquired_at"),
+  ]);
+  // Story tables are optional for exports made before the Sprint 6 migration.
+  const story = { story_progress: sp.data ?? [], achievements: ach.data ?? [], unlocked_titles: ttl.data ?? [], inventory_items: inv.data ?? [] };
   return {
     format: "nemesis-export",
-    version: 4,
+    version: 5,
     exportedAt: new Date().toISOString(),
     user: { display_name: user.display_name, timezone: user.timezone, daily_minutes: user.daily_minutes },
     game_profile: profile,
@@ -450,6 +460,7 @@ export async function exportProgress(db: SupabaseClient, userId: string) {
     rival_actions: rivalActions,
     ...realm,
     ...court,
+    ...story,
   };
 }
 

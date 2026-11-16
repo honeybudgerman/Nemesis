@@ -109,3 +109,36 @@ export const courtAssignSchema = z.object({
   npcCode: npcCode.nullable(),
   idempotencyKey,
 });
+
+const chapterCode = z.string().regex(/^[a-z0-9_]{2,40}$/);
+
+export const storySeenSchema = z.object({
+  chapter: chapterCode,
+  scene: z.enum(["intro", "outro"]),
+});
+
+export const storyChooseSchema = z.object({
+  chapter: chapterCode,
+  choice: z.string().regex(/^[a-z0-9_]{2,40}$/),
+  idempotencyKey,
+});
+
+export const storyBossSchema = z.object({
+  chapter: chapterCode,
+  tactic: z.enum(["cautious", "balanced", "aggressive"]),
+  commander: z.enum(["self", "none", "general"]),
+  idempotencyKey,
+});
+
+export const storyCompleteSchema = z.object({
+  chapter: chapterCode,
+  idempotencyKey,
+});
+
+export const storyTitleSchema = z.object({
+  title: z.string().regex(/^[a-z0-9_]{2,40}$/).nullable(),
+});
+
+export const storyChronicleSchema = z.object({
+  chapter: chapterCode,
+});

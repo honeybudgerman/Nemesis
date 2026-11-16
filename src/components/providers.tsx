@@ -21,6 +21,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
     document.documentElement.dataset.motion = motionOff ? "off" : "on";
   }, [motionOff]);
 
+  // A short 8-bit click for every pixel button (only when sound is on).
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const el = e.target instanceof Element ? e.target.closest(".pixel-btn") : null;
+      if (el && !(el as HTMLButtonElement).disabled) useUiStore.getState().sfx("click");
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, []);
+
   useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js").catch(() => {});

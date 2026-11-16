@@ -1,11 +1,18 @@
 import { POSITION_DEFS, POSITIONS, RELATIONSHIP_STATUSES, STATUS_LABELS } from "@/data/court/npcs";
 import { BUILDINGS, BUILDING_TYPES } from "@/data/realm/buildings";
 import { UNITS, UNIT_TYPES } from "@/data/realm/units";
+import { CHAPTER_BY_CODE } from "@/data/story/chapters";
+import { ACHIEVEMENT_BY_CODE } from "@/data/story/rewards";
 import type { GameEventView } from "@/types/game";
+import type { TimelineCategory } from "@/types/story";
 
 const buildingName = (v: unknown) => ((BUILDING_TYPES as readonly unknown[]).includes(v) ? BUILDINGS[v as (typeof BUILDING_TYPES)[number]].name : "постройка");
 const statusName = (v: unknown) => ((RELATIONSHIP_STATUSES as readonly unknown[]).includes(v) ? STATUS_LABELS[v as (typeof RELATIONSHIP_STATUSES)[number]] : "отношения изменились");
 const positionName = (v: unknown) => ((POSITIONS as readonly unknown[]).includes(v) ? POSITION_DEFS[v as (typeof POSITIONS)[number]].name : "должность");
+const chapterName = (v: unknown) => {
+  const c = CHAPTER_BY_CODE[String(v)];
+  return c ? `Глава ${c.number}. ${c.title}` : "Глава";
+};
 const unitName = (v: unknown) => ((UNIT_TYPES as readonly unknown[]).includes(v) ? UNITS[v as (typeof UNIT_TYPES)[number]].name : "войска");
 
 /** Human-readable chronicle line for a game event. Text is rendered as plain React text (escaped). */
@@ -48,9 +55,45 @@ export function describeEvent(e: GameEventView): string {
       return `${String(p.territory ?? "Территория")} мирно присоединяется к королевству.`;
     case "KAEL_CONQUEST":
       return `Каэль захватил ${String(p.territory ?? "")}.`;
+    case "CHAPTER_STARTED":
+      return `Начинается «${chapterName(p.chapter)}».`;
+    case "CHAPTER_COMPLETED":
+      return `Завершена «${chapterName(p.chapter)}».`;
+    case "STORY_DECISION":
+      return `${String(p.title ?? "Решение")}: ${String(p.choice ?? "")}.`;
+    case "BOSS_DEFEATED":
+      return `Повержен ${String(p.name ?? "сюжетный противник")}.`;
+    case "BOSS_REPELLED":
+      return `${String(p.name ?? "Противник")} отбил штурм. Армия отступила.`;
+    case "ACHIEVEMENT_UNLOCKED":
+      return `Достижение: «${ACHIEVEMENT_BY_CODE[String(p.code)]?.name ?? String(p.name ?? "")}».`;
     default:
       return e.type;
   }
+}
+
+const CATEGORY: Record<string, TimelineCategory> = {
+  BATTLE_WON: "battles",
+  BATTLE_LOST: "battles",
+  BOSS_DEFEATED: "battles",
+  BOSS_REPELLED: "battles",
+  COURT_FOUNDED: "politics",
+  COURT_JOINED: "politics",
+  COURT_RELATIONSHIP: "politics",
+  COURT_EVENT: "politics",
+  POSITION_ASSIGNED: "politics",
+  TERRITORY_JOINED: "politics",
+  STORY_DECISION: "politics",
+  RIVAL_APPEARED: "rivalry",
+  RIVAL_LEVEL_UP: "rivalry",
+  KAEL_CONQUEST: "rivalry",
+  CHAPTER_STARTED: "story",
+  CHAPTER_COMPLETED: "story",
+};
+
+/** Chronicle section of an event (ТЗ §13: история королевства по разделам). */
+export function eventCategory(type: string): TimelineCategory {
+  return CATEGORY[type] ?? "kingdom";
 }
 
 export function formatWhen(iso: string): string {

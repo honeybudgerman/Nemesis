@@ -78,7 +78,19 @@ export interface GameState {
   recentEvents: GameEventView[];
   /** Kael's summary; null only if the rival tables are not migrated yet. */
   rival: RivalSummary | null;
+  /** Story summary for the throne room; null if the story tables are not migrated yet. */
+  story: StorySummary | null;
   serverTime: string;
+}
+
+export interface StorySummary {
+  chapter: { number: number; title: string; stage: "intro" | "objectives" | "boss" | "ready" | "completed" } | null;
+  /** A cutscene waits to be watched. */
+  pendingScene: boolean;
+  /** Active title name. */
+  title: string | null;
+  /** Achievements unlocked by this request. */
+  newAchievements: string[];
 }
 
 export interface RivalActionView {

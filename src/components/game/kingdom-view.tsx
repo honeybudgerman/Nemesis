@@ -386,6 +386,7 @@ function AttackPanel({ t, k, onResult }: { t: TerritoryView; k: KingdomScreen; o
     commander,
     strategy: commander === "general" && k.general ? k.general.skill : k.heroStrategy,
     tactic,
+    powerBonus: k.powerBonus,
     target: { terrain: t.terrain, garrison: t.garrison, fortification: t.fortification, resource: t.resource },
   });
   const blocked = k.resources.commandPoints < 1 ? "Нет очков командования: новое появится завтра." : k.army.size < 1 ? "Армия пуста. Наймите войска в казармах." : null;
