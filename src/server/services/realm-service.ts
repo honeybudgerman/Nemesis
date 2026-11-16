@@ -14,6 +14,8 @@ import { hashString } from "@/lib/random";
 import { addDays, parseLocalDate, questPeriods, startOfLocalDay } from "@/lib/time";
 import { NPC_BY_CODE, type NpcStats, type Position } from "@/data/court/npcs";
 import { commanderSkill, courtEconomyBonus } from "@/engine/court/court";
+import { itemEffects } from "@/engine/story/story";
+import { CHAPTERS } from "@/data/story/chapters";
 import { ApiError, fromDbError } from "@/server/http/errors";
 import { getAdminSupabase } from "@/server/supabase/admin";
 import { ensureRival } from "@/server/services/rival-service";
@@ -85,6 +87,8 @@ export interface Realm {
   strategy: number;
   rival: { rngSeed: number; level: number } | null;
   court: { npcs: CourtNpcLite[]; resolved: Record<string, { choice: string; day: string }> };
+  /** Story items with passive effects. */
+  items: string[];
 }
 
 interface CourtNpcLite {
@@ -106,7 +110,7 @@ async function loadProfile(db: SupabaseClient, userId: string) {
 }
 
 async function loadRealm(db: SupabaseClient, profileId: string, timezone: string): Promise<Realm | null> {
-  const [k, terr, rival, stats, courtNpcs, courtEvents] = await Promise.all([
+  const [k, terr, rival, stats, courtNpcs, courtEvents, inventory] = await Promise.all([
     db
       .from("kingdoms")
       .select("id, name, gold, food, knowledge, influence, command_points, last_economy_day")
@@ -118,8 +122,9 @@ async function loadRealm(db: SupabaseClient, profileId: string, timezone: string
     db.from("character_stats").select("strategy").eq("game_profile_id", profileId).eq("character_type", "HERO").maybeSingle(),
     db.from("court_npcs").select("npc_code, position, loyalty, affection, trust, ambition, jealousy, influence, recruited_at").eq("game_profile_id", profileId),
     db.from("court_events").select("event_code, selected_choice, resolved_day").eq("game_profile_id", profileId).eq("status", "RESOLVED"),
+    db.from("inventory_items").select("item_code").eq("game_profile_id", profileId),
   ]);
-  for (const x of [k, terr, rival, stats, courtNpcs, courtEvents]) if (x.error) throw fromDbError(x.error);
+  for (const x of [k, terr, rival, stats, courtNpcs, courtEvents, inventory]) if (x.error) throw fromDbError(x.error);
   if (!k.data) throw new ApiError("KINGDOM_NOT_FOUND");
   const territories = (terr.data ?? []) as TerritoryRow[];
   if (territories.length === 0) return null;
@@ -166,6 +171,7 @@ async function loadRealm(db: SupabaseClient, profileId: string, timezone: string
         ((courtEvents.data ?? []) as { event_code: string; selected_choice: string; resolved_day: string }[]).map((e) => [e.event_code, { choice: e.selected_choice, day: e.resolved_day }]),
       ),
     },
+    items: ((inventory.data ?? []) as { item_code: string }[]).map((i) => i.item_code),
   };
 }
 
@@ -188,14 +194,16 @@ async function ensureRealm(db: SupabaseClient, userId: string, profileId: string
   return realm;
 }
 
-function economyOf(r: Realm): EconomyState {
+export function economyOf(r: Realm): EconomyState {
+  const court = courtEconomyBonus(r.court.npcs, r.court);
+  const items = itemEffects(r.items).economy;
   return {
     resources: { gold: r.kingdom.gold, food: r.kingdom.food, knowledge: r.kingdom.knowledge, influence: r.kingdom.influence, command_points: r.kingdom.commandPoints },
     morale: r.morale,
     buildings: r.buildings.map((b) => ({ type: b.building_type, level: b.level, terrain: b.terrain, completedAt: b.completed_at })),
     territories: r.territories.filter((t) => t.owner_type === "HERO").map((t) => ({ resource: t.resource_type })),
     army: r.army,
-    bonus: courtEconomyBonus(r.court.npcs, r.court),
+    bonus: { gold: court.gold + items.gold, food: court.food + items.food, knowledge: court.knowledge + items.knowledge, influence: court.influence + items.influence },
   };
 }
 
@@ -269,7 +277,7 @@ export async function syncWorld(
 // ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
-function rulesBuildings(r: Realm): RulesBuilding[] {
+export function rulesBuildings(r: Realm): RulesBuilding[] {
   const now = Date.now();
   return r.buildings
     .filter((b) => r.territories.find((t) => t.territory_code === b.territoryCode)?.owner_type === "HERO")
@@ -291,7 +299,8 @@ async function loadBattles(db: SupabaseClient, r: Realm): Promise<BattleView[]> 
     .order("resolved_at", { ascending: false })
     .limit(10);
   if (error) throw fromDbError(error);
-  const names = new Map(r.territories.map((t) => [t.territory_code, t.name]));
+  const names = new Map<string, string>(r.territories.map((t) => [t.territory_code, t.name]));
+  for (const c of CHAPTERS) if (c.boss) names.set(`boss:${c.boss.code}`, `${c.boss.name} (босс)`);
   return (data ?? []).map((b) => ({
     id: b.id,
     attacker: b.attacker_side,
@@ -308,7 +317,7 @@ async function loadBattles(db: SupabaseClient, r: Realm): Promise<BattleView[]> 
   }));
 }
 
-async function screen(db: SupabaseClient, r: Realm, pendingDays: number): Promise<KingdomScreen> {
+export async function screen(db: SupabaseClient, r: Realm, pendingDays: number): Promise<KingdomScreen> {
   const now = new Date();
   const rb = rulesBuildings(r);
   const castleLevel = Math.max(1, completedLevel(rb, "castle"));
@@ -366,6 +375,7 @@ async function screen(db: SupabaseClient, r: Realm, pendingDays: number): Promis
     army: { units: r.army, size, cap, power: Math.round(armyPower(r.army)), morale: r.morale },
     heroStrategy: r.strategy,
     general: generalOf(r),
+    powerBonus: itemEffects(r.items).battlePower,
     construction: building
       ? { type: building.building_type, level: building.level, territory: r.territories.find((t) => t.id === building.territory_id)?.name ?? "", completedAt: building.completed_at }
       : null,
@@ -461,6 +471,7 @@ export async function attack(
       commander: input.commander,
       strategy: input.commander === "general" ? general!.skill : realm.strategy,
       tactic: input.tactic,
+      powerBonus: itemEffects(realm.items).battlePower,
       target: { terrain: t.terrain_type, garrison: t.garrison_strength, fortification: t.fortification_level, resource: t.resource_type },
       seed,
     });

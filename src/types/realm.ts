@@ -72,6 +72,8 @@ export interface KingdomScreen {
   heroStrategy: number;
   /** Appointed court commander able to lead the army. */
   general: { code: string; name: string; skill: number } | null;
+  /** Battle power bonus from story items (0.1 = +10%). */
+  powerBonus: number;
   construction: { type: BuildingType; level: number; territory: string; completedAt: string } | null;
   territories: TerritoryView[];
   recruitOptions: RecruitOption[];

@@ -15,6 +15,8 @@ export function SettingsView({ email }: { email: string }) {
   const qc = useQueryClient();
   const online = useOnline();
   const motionOff = useUiStore((s) => s.motionOff);
+  const soundOn = useUiStore((s) => s.soundOn);
+  const setSoundOn = useUiStore((s) => s.setSoundOn);
   const setMotionOff = useUiStore((s) => s.setMotionOff);
   const push = useUiStore((s) => s.pushToast);
   const [confirm, setConfirm] = useState("");
@@ -62,6 +64,10 @@ export function SettingsView({ email }: { email: string }) {
         <label className="mt-2 flex min-h-11 items-center gap-3 text-sm">
           <input type="checkbox" className="h-5 w-5 accent-[var(--gold)]" checked={motionOff} onChange={(e) => setMotionOff(e.target.checked)} />
           Отключить анимации
+        </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm">
+          <input type="checkbox" className="h-5 w-5 accent-[var(--gold)]" checked={soundOn} onChange={(e) => setSoundOn(e.target.checked)} />
+          Звуковые эффекты
         </label>
       </section>
 

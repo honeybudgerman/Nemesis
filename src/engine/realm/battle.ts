@@ -18,6 +18,8 @@ export interface BattleInput {
   /** Hero's strategy stat 0..100 (used when the ruler leads in person). */
   strategy: number;
   tactic: Tactic;
+  /** Additive bonus from story items: 0.1 = +10% attacker power. */
+  powerBonus?: number;
   target: { terrain: Terrain; garrison: number; fortification: number; resource: TerritoryResource };
   seed: number;
 }
@@ -64,8 +66,9 @@ export function defenderBase(t: BattleInput["target"]): number {
   return t.garrison * (1 + 0.25 * t.fortification) * TERRAIN_DEFENSE[t.terrain];
 }
 
-export function attackerBasePower(i: Pick<BattleInput, "army" | "morale" | "commander" | "strategy" | "tactic">): number {
-  return armyPower(i.army) * moraleModifier(i.morale) * commanderModifier(i.commander, i.strategy) * TACTICS[i.tactic].power;
+export function attackerBasePower(i: Pick<BattleInput, "army" | "morale" | "commander" | "strategy" | "tactic" | "powerBonus">): number {
+  const bonus = 1 + clamp(i.powerBonus ?? 0, 0, 0.5);
+  return armyPower(i.army) * moraleModifier(i.morale) * commanderModifier(i.commander, i.strategy) * TACTICS[i.tactic].power * bonus;
 }
 
 const roll = (rng: Rng) => 0.9 + 0.2 * rng(); // RandomModifier 0.90–1.10

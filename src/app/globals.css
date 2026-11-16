@@ -160,6 +160,50 @@ body {
 }
 .anim-float { animation: float-up 1.2s steps(12) forwards; }
 
+@keyframes pixel-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 184, 74, 0.0); }
+  50% { box-shadow: 0 0 0 4px rgba(232, 184, 74, 0.45); }
+}
+.anim-pulse { animation: pixel-pulse 1.6s steps(8) infinite; }
+
+@keyframes pixel-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.anim-fade { animation: pixel-fade-in 400ms steps(8) both; }
+
+@keyframes pixel-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.anim-rise { animation: pixel-rise 300ms steps(6) both; }
+
+@keyframes pixel-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+.anim-shake { animation: pixel-shake 400ms steps(5) both; }
+
+@keyframes pixel-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.anim-bob { animation: pixel-bob 1.2s steps(4) infinite; }
+
+@keyframes pixel-twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+.anim-twinkle { animation: pixel-twinkle 2.4s steps(4) infinite; }
+
+@keyframes caret-blink {
+  50% { opacity: 0; }
+}
+.anim-caret { animation: caret-blink 900ms steps(1) infinite; }
+
 /* "Reduce animations" — system setting or the in-game toggle. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

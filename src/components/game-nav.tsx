@@ -21,7 +21,7 @@ const ITEMS: Item[] = [
   { href: "/mentor", label: "Наставник", short: "Орион", icon: "🔮" },
   { href: "/kingdom", label: "Королевство", short: "Земли", icon: "🏰" },
   { href: "/court", label: "Двор", icon: "🎭" },
-  { href: "/chronicles", label: "Хроники", icon: "📖", sprint: 6 },
+  { href: "/chronicles", label: "Хроники", short: "Сюжет", icon: "📖" },
 ];
 
 export function GameNav() {

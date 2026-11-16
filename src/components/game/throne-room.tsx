@@ -9,6 +9,9 @@ import { XpBar } from "@/components/ui/xp-bar";
 import { RESOURCE_LABELS } from "@/data/kingdom";
 import { mentorLine } from "@/data/mentor/lines";
 import { describeEvent, formatWhen } from "@/lib/events";
+import { useUiStore } from "@/stores/ui-store";
+import type { StorySummary } from "@/types/game";
+import { useEffect, useRef } from "react";
 import { StateGate } from "./state-gate";
 
 export function ThroneRoom() {
@@ -35,6 +38,7 @@ export function ThroneRoom() {
                   <Portrait kind="hero" size={72} title={s.profile.heroName} />
                   <div className="min-w-0 flex-1">
                     <div className="font-display text-lg text-gold truncate">{s.profile.heroName}</div>
+                    {s.story?.title && <div className="font-display text-xs text-gold">«{s.story.title}»</div>}
                     <div className="text-xs text-muted">
                       {s.profile.rank} · {s.profile.kingdomName}
                     </div>
@@ -81,6 +85,8 @@ export function ThroneRoom() {
                 </div>
               </div>
             </section>
+
+            {s.story && <StoryCard story={s.story} />}
 
             {/* Today's quests */}
             <section className="lg:col-span-2" aria-label="Задания на сегодня">
@@ -136,6 +142,44 @@ export function ThroneRoom() {
         );
       }}
     </StateGate>
+  );
+}
+
+const STAGE_TEXT: Record<NonNullable<StorySummary["chapter"]>["stage"], string> = {
+  intro: "Новая глава ждёт начала.",
+  objectives: "Выполняйте цели главы реальными делами.",
+  boss: "Цели выполнены: впереди сюжетный бой.",
+  ready: "Глава готова к завершению.",
+  completed: "Глава пройдена.",
+};
+
+function StoryCard({ story }: { story: StorySummary }) {
+  const push = useUiStore((st) => st.pushToast);
+  const shown = useRef("");
+  useEffect(() => {
+    const key = story.newAchievements.join("|");
+    if (!key || shown.current === key) return;
+    shown.current = key;
+    for (const name of story.newAchievements) push("level", `Достижение: «${name}»`);
+  }, [story.newAchievements, push]);
+
+  return (
+    <section className={`pixel-panel p-4 ${story.pendingScene ? "pixel-panel-gold" : ""}`} aria-label="Сюжет">
+      <h2 className="font-display text-gold">📖 Сюжет</h2>
+      {story.chapter ? (
+        <>
+          <p className="mt-1 font-display text-sm">
+            Глава {story.chapter.number}. {story.chapter.title}
+          </p>
+          <p className="text-xs text-muted">{STAGE_TEXT[story.chapter.stage]}</p>
+        </>
+      ) : (
+        <p className="mt-1 text-sm">Первая книга пройдена. Продолжение следует.</p>
+      )}
+      <Link href="/chronicles" className={`pixel-btn mt-3 block w-full text-center text-sm ${story.pendingScene ? "pixel-btn-gold anim-pulse" : ""}`}>
+        {story.pendingScene ? "▶ Смотреть новую сцену" : "Открыть хроники"}
+      </Link>
+    </section>
   );
 }
 

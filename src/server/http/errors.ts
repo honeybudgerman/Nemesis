@@ -31,6 +31,10 @@ export type ErrorCode =
   | "NPC_NOT_AVAILABLE"
   | "TERRITORY_UNAVAILABLE"
   | "CHOICE_UNAVAILABLE"
+  | "STORY_LOCKED"
+  | "OBJECTIVES_INCOMPLETE"
+  | "BOSS_COOLDOWN"
+  | "TITLE_LOCKED"
   | "NOT_CONFIGURED"
   | "INTERNAL";
 
@@ -65,6 +69,10 @@ const STATUS: Record<ErrorCode, number> = {
   NPC_NOT_AVAILABLE: 409,
   TERRITORY_UNAVAILABLE: 409,
   CHOICE_UNAVAILABLE: 409,
+  STORY_LOCKED: 409,
+  OBJECTIVES_INCOMPLETE: 409,
+  BOSS_COOLDOWN: 409,
+  TITLE_LOCKED: 409,
   NOT_CONFIGURED: 503,
   INTERNAL: 500,
 };
@@ -100,6 +108,10 @@ const MESSAGES: Record<ErrorCode, string> = {
   NPC_NOT_AVAILABLE: "Этого персонажа пока нет при дворе.",
   TERRITORY_UNAVAILABLE: "Эта территория сейчас недоступна.",
   CHOICE_UNAVAILABLE: "Этот вариант сейчас недоступен.",
+  STORY_LOCKED: "Этот шаг сюжета пока недоступен.",
+  OBJECTIVES_INCOMPLETE: "Цели главы ещё не выполнены.",
+  BOSS_COOLDOWN: "Сегодня армия уже штурмовала. Новая попытка — завтра.",
+  TITLE_LOCKED: "Этот титул ещё не получен.",
   NOT_CONFIGURED: "Сервер не настроен: не заданы ключи Supabase.",
   INTERNAL: "Внутренняя ошибка сервера.",
 };
