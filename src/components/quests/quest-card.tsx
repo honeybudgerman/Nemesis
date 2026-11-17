@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { StorySceneButton } from "@/components/story/story-scene-button";
 import { SKILL_ICONS, SKILL_LABELS, isSkillCode } from "@/data/skills";
 import { useCompleteQuest, useSkipQuest } from "@/hooks/use-game";
 import { useEvaluateAnswer } from "@/hooks/use-mentor";
 import { useOnline } from "@/hooks/use-online";
 import { useStartedQuests } from "@/stores/started-quests";
-import type { MentorEvaluationView, QuestView } from "@/types/game";
+import type { MentorEvaluationView, QuestView, StorySummary } from "@/types/game";
 import { EvaluationCard } from "./evaluation-card";
 
 const STATUS_LABEL: Record<QuestView["status"], string> = {
@@ -26,6 +27,7 @@ const STATUS_STYLE: Record<QuestView["status"], string> = {
 export function QuestCard({ quest, compact = false }: { quest: QuestView; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
+  const [storyAfterCompletion, setStoryAfterCompletion] = useState<StorySummary | null>(null);
   const online = useOnline();
   const complete = useCompleteQuest();
   const skip = useSkipQuest();
@@ -41,6 +43,7 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
   const busy = complete.isPending || skip.isPending || evaluate.isPending;
   const cat = isSkillCode(quest.category) ? quest.category : null;
   const done = quest.status === "COMPLETED";
+  const questObjective = storyAfterCompletion?.objectives?.find((o) => o.code === "quests");
 
   return (
     <article className={`pixel-panel p-3 sm:p-4 ${done ? "opacity-80" : ""}`}>
@@ -69,6 +72,15 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
           {!compact && <p className="mt-2 text-sm text-text/85">{quest.description}</p>}
         </div>
       </div>
+
+      {done && questObjective && (
+        <div className="mt-3 border-t-2 border-border pt-2 text-sm">
+          <p role="status" className="text-gold">
+            Выполненные задания для главы: {questObjective.current}/{questObjective.target}
+          </p>
+          {storyAfterCompletion?.questMilestone && <StorySceneButton scene={storyAfterCompletion.questMilestone} />}
+        </div>
+      )}
 
       {open && (
         <div className="mt-3 border-t-2 border-border pt-3 text-sm">
@@ -130,8 +142,12 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
                 { questId: quest.id, answer },
                 {
                   onSuccess: (r) => {
-                    if (r.status === "evaluated") setVerdict(r.evaluation);
-                    else setReviewDown(r.message);
+                    if (r.status === "evaluated") {
+                      setVerdict(r.evaluation);
+                      if (r.completion.status === "completed") setStoryAfterCompletion(r.completion.state.story);
+                    } else {
+                      setReviewDown(r.message);
+                    }
                   },
                 },
               );
@@ -144,7 +160,11 @@ export function QuestCard({ quest, compact = false }: { quest: QuestView; compac
           <button
             className={`pixel-btn text-sm ${review ? "" : "pixel-btn-gold"}`}
             disabled={!online || busy}
-            onClick={() => complete.mutate({ questId: quest.id, note: note || undefined })}
+            onClick={() => complete.mutate({ questId: quest.id, note: note || undefined }, {
+              onSuccess: (r) => {
+                if (r.status === "completed") setStoryAfterCompletion(r.state.story);
+              },
+            })}
           >
             {complete.isPending ? "Сохраняю…" : review ? "Завершить самостоятельно (B)" : "Завершить"}
           </button>

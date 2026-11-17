@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { updateCourtNames } from "@/data/court/npcs";
-import { CHAPTERS, CHAPTER_BY_CODE, type ChapterDef, type SceneDef } from "@/data/story/chapters";
+import { CHAPTERS, CHAPTER_BY_CODE, FIRST_QUESTS_SCENE, type ChapterDef, type SceneDef } from "@/data/story/chapters";
 import { EMPTY_FACTS, PROGRESS_METRICS, type ProgressFacts } from "@/data/story/progress";
 import { ACHIEVEMENTS, ITEM_BY_CODE, ITEMS, TITLE_BY_CODE, TITLES } from "@/data/story/rewards";
 import type { Tactic } from "@/data/realm/units";
@@ -313,6 +313,10 @@ export async function getStorySummary(db: SupabaseClient, userId: string) {
     const s = await getStoryScreen(db, userId);
     return {
       chapter: s.current ? { number: s.current.number, title: s.current.title, stage: s.current.stage } : null,
+      objectives: s.current?.objectives ?? [],
+      questMilestone: s.current?.code === "ch1" && s.current.objectives.some((o) => o.code === "quests" && o.done)
+        ? sceneView(FIRST_QUESTS_SCENE, s.heroName)
+        : null,
       pendingScene: s.pendingScene != null,
       title: s.activeTitle?.name ?? null,
       newAchievements: s.newAchievements.map((c) => ACHIEVEMENTS.find((a) => a.code === c)?.name ?? c),

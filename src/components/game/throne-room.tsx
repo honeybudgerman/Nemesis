@@ -5,6 +5,7 @@ import { Portrait } from "@/components/characters/portrait";
 import { CASTLE_PALETTE, CASTLE_SPRITE } from "@/components/characters/sprites";
 import { PixelSprite } from "@/components/pixel/pixel-sprite";
 import { QuestCard } from "@/components/quests/quest-card";
+import { StorySceneButton } from "@/components/story/story-scene-button";
 import { XpBar } from "@/components/ui/xp-bar";
 import { RESOURCE_LABELS } from "@/data/kingdom";
 import { mentorLine } from "@/data/mentor/lines";
@@ -172,6 +173,17 @@ function StoryCard({ story }: { story: StorySummary }) {
             Глава {story.chapter.number}. {story.chapter.title}
           </p>
           <p className="text-xs text-muted">{STAGE_TEXT[story.chapter.stage]}</p>
+          {story.objectives && story.objectives.length > 0 && (
+            <ul className="mt-3 space-y-1 text-sm">
+              {story.objectives.map((o) => (
+                <li key={o.code} className="flex items-baseline justify-between gap-2">
+                  <span>{o.label}</span>
+                  <span className={o.done ? "shrink-0 text-xp" : "shrink-0 text-muted"}>{o.current}/{o.target}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {story.questMilestone && <StorySceneButton scene={story.questMilestone} />}
         </>
       ) : (
         <p className="mt-1 text-sm">Первая книга пройдена. Продолжение следует.</p>

@@ -1,6 +1,9 @@
 import type { Grade, LevelProgress } from "@/engine/progression/xp";
 import type { EvaluationMode, QuestFrequency } from "@/data/quests/templates";
 
+import type { ObjectiveState } from "@/engine/story/story";
+import type { SceneView } from "@/types/story";
+
 export type QuestStatus = "PENDING" | "COMPLETED" | "SKIPPED" | "EXPIRED";
 export type QuestSource = "TEMPLATE" | "AI" | "MANUAL";
 
@@ -85,6 +88,8 @@ export interface GameState {
 
 export interface StorySummary {
   chapter: { number: number; title: string; stage: "intro" | "objectives" | "boss" | "ready" | "completed" } | null;
+  objectives?: ObjectiveState[];
+  questMilestone?: SceneView | null;
   /** A cutscene waits to be watched. */
   pendingScene: boolean;
   /** Active title name. */

@@ -22,6 +22,17 @@ export interface SceneDef {
   lines: DialogueLine[];
 }
 
+export const FIRST_QUESTS_SCENE: SceneDef = {
+  code: "ch1_first_quests",
+  title: "Открытые ворота",
+  backdrop: "throne",
+  lines: [
+    { speaker: "mentor", text: "Я видел, как ты держишь слово, {hero}. Три дела доведены до конца. У ворот об этом уже говорят." },
+    { speaker: "hero", text: "Кто говорит? Стража?" },
+    { speaker: "mentor", text: "Люди из Речных бродов. Им важно знать, что у королевства есть правитель, который доводит начатое до конца." },
+  ],
+};
+
 export interface ObjectiveDef {
   code: string;
   label: string;
