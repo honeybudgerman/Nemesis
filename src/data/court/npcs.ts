@@ -94,7 +94,7 @@ export const NPCS: readonly NpcDef[] = [
   },
   {
     code: "selvina",
-    name: "Сельвина Эшгрейв",
+    name: "Юки Эшгрейв",
     age: 29,
     role: "companion",
     title: "Алхимик Ордена Пепла",
@@ -215,6 +215,11 @@ export const NPCS: readonly NpcDef[] = [
     joins: { kind: "event", code: "meyrin_1", text: "Выйдет из тени после первого задания Мейрин." },
   },
 ];
+
+/** Use the current name in text saved before the portrait update. */
+export function updateCourtNames(text: string): string {
+  return text.replace(/(?<!\p{L})Сельвин(?:ой|ою|а|е|у|ы)(?!\p{L})/gu, "Юки");
+}
 
 export const NPC_BY_CODE: Readonly<Record<string, NpcDef>> = Object.fromEntries(NPCS.map((n) => [n.code, n]));
 export const isNpcCode = (c: string): boolean => c in NPC_BY_CODE;

@@ -268,7 +268,7 @@ export const SPEAKERS: Readonly<Record<Speaker, { name: string }>> = {
   mentor: { name: "Орион" },
   rival: { name: "Каэль" },
   liara: { name: "Лиара" },
-  selvina: { name: "Сельвина" },
+  selvina: { name: "Юки" },
   torvald: { name: "Торвальд" },
   meyrin: { name: "Мейрин" },
   bram: { name: "Брам" },

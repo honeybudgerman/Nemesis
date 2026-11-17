@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { updateCourtNames } from "@/data/court/npcs";
 import { CHAPTERS, CHAPTER_BY_CODE, type ChapterDef, type SceneDef } from "@/data/story/chapters";
 import { EMPTY_FACTS, PROGRESS_METRICS, type ProgressFacts } from "@/data/story/progress";
 import { ACHIEVEMENTS, ITEM_BY_CODE, ITEMS, TITLE_BY_CODE, TITLES } from "@/data/story/rewards";
@@ -247,7 +248,7 @@ function screenOf(s: Story): StoryScreen {
       summary: c.summary,
       status: !row ? "locked" : row.status === "COMPLETED" ? "completed" : "active",
       decision: row?.decision ? (c.decision.choices.find((x) => x.code === row.decision)?.label ?? null) : null,
-      chronicle: row?.chronicle ?? null,
+      chronicle: row?.chronicle ? updateCourtNames(row.chronicle) : null,
       chronicleSource: row?.chronicle_source ?? null,
       completedAt: row?.completed_at ?? null,
       outroSeen: row?.outro_seen ?? false,
@@ -498,7 +499,7 @@ export async function chapterChronicle(db: SupabaseClient, userId: string, input
   const rows = await loadRows(db, realm.profileId);
   const row = rows.find((r) => r.chapter_code === ch.code);
   if (!row || row.status !== "COMPLETED") throw new ApiError("STORY_LOCKED");
-  if (row.chronicle) return { chronicle: row.chronicle, source: row.chronicle_source ?? "FALLBACK" };
+  if (row.chronicle) return { chronicle: updateCourtNames(row.chronicle), source: row.chronicle_source ?? "FALLBACK" };
 
   const [p, ev] = await Promise.all([
     db.from("game_profiles").select("hero_name, kingdom_name").eq("id", realm.profileId).maybeSingle<{ hero_name: string; kingdom_name: string }>(),
@@ -539,5 +540,5 @@ export async function chapterChronicle(db: SupabaseClient, userId: string, input
     p_source: source,
   });
   // Another request may have written it first: whatever is stored wins.
-  return { chronicle: saved.chronicle, source: saved.chronicle === text ? "AI" : saved.chronicle === fillHero(ch.chronicle, hero) ? "FALLBACK" : source };
+  return { chronicle: updateCourtNames(saved.chronicle), source: saved.chronicle === text ? "AI" : saved.chronicle === fillHero(ch.chronicle, hero) ? "FALLBACK" : source };
 }

@@ -129,8 +129,8 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
     step: 1,
     title: "Запретная рукопись",
     participants: ["selvina"],
-    text: "Сельвине нужна рукопись из архива Старого монастыря. «Орден не отдаст её просто так. Но без неё мой труд так и останется черновиком».",
-    hint: "Познакомьтесь с Сельвиной и завоюйте немного её симпатии или доверия.",
+    text: "Юки нужна рукопись из архива Старого монастыря. «Орден не отдаст её просто так. Но без неё мой труд так и останется черновиком».",
+    hint: "Познакомьтесь с Юки и завоюйте немного её симпатии или доверия.",
     requires: (f) => present(f, "selvina") && acquainted(f, "selvina") && (stat(f, "selvina", "affection") >= 28 || stat(f, "selvina", "trust") >= 32),
     choices: [
       {
@@ -138,7 +138,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
         label: "Выкупить рукопись у Ордена",
         cost: { gold: 50 },
         unavailable: (f) => lacks(f, { gold: 50 }),
-        resolve: () => ({ text: "Монахи торгуются, но уступают. Сельвина держит рукопись так, будто это живое существо.", npcs: { selvina: { affection: 6, trust: 6, loyalty: 4 } }, resources: { knowledge: 5 } }),
+        resolve: () => ({ text: "Монахи торгуются, но уступают. Юки держит рукопись так, будто это живое существо.", npcs: { selvina: { affection: 6, trust: 6, loyalty: 4 } }, resources: { knowledge: 5 } }),
       },
       {
         code: "sneak",
@@ -148,7 +148,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
       {
         code: "refuse",
         label: "Не ссориться с Орденом",
-        resolve: () => ({ text: "Сельвина кивает и уходит в библиотеку. Дверь за ней закрывается чуть громче обычного.", npcs: { selvina: { affection: -6, trust: -4 }, meyrin: { trust: 3 } } }),
+        resolve: () => ({ text: "Юки кивает и уходит в библиотеку. Дверь за ней закрывается чуть громче обычного.", npcs: { selvina: { affection: -6, trust: -4 }, meyrin: { trust: 3 } } }),
       },
     ],
   },
@@ -159,7 +159,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
     step: 2,
     title: "Опыт в лаборатории",
     participants: ["selvina"],
-    text: "Опыт идёт не так, лабораторию заполняет дым. Сельвина цела, но руки у неё дрожат. «Я была так близко... Не уходи пока, ладно?»",
+    text: "Опыт идёт не так, лабораторию заполняет дым. Юки цела, но руки у неё дрожат. «Я была так близко... Не уходи пока, ладно?»",
     hint: "Добудьте рукопись и сблизьтесь: нужны симпатия 50 и доверие 45.",
     requires: (f) => doneBefore(f, "selvina_1") && chose(f, "selvina_1", "buy", "sneak") && stat(f, "selvina", "affection") >= 50 && stat(f, "selvina", "trust") >= 45,
     choices: [
@@ -169,7 +169,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
         hint: "Она решит сама",
         resolve: (f) =>
           stat(f, "selvina", "affection") >= 65 && stat(f, "selvina", "trust") >= 55
-            ? { text: "К рассвету формулы забыты. Сельвина смеётся впервые за долгое время, и между вами начинается роман.", npcs: { selvina: { affection: 10, trust: 6, loyalty: 6 } }, status: { selvina: "ROMANCE" } }
+            ? { text: "К рассвету формулы забыты. Юки смеётся впервые за долгое время, и между вами начинается роман.", npcs: { selvina: { affection: 10, trust: 6, loyalty: 6 } }, status: { selvina: "ROMANCE" } }
             : { text: "Вы разговариваете до утра о звёздах и ошибках. «Спасибо, что не ушёл», — говорит она на прощание.", npcs: { selvina: { affection: 5, trust: 6 } } },
       },
       {
@@ -182,7 +182,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
       {
         code: "stop",
         label: "Запретить опасные опыты",
-        resolve: () => ({ text: "Сельвина подчиняется, но огонь в её глазах гаснет.", npcs: { selvina: { affection: -10, loyalty: -8, trust: -6 } } }),
+        resolve: () => ({ text: "Юки подчиняется, но огонь в её глазах гаснет.", npcs: { selvina: { affection: -10, loyalty: -8, trust: -6 } } }),
       },
     ],
   },
@@ -193,8 +193,8 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
     step: 3,
     title: "Суд Ордена Пепла",
     participants: ["selvina", "meyrin"],
-    text: "Орден Пепла требует вернуть Сельвину для суда. Её главный труд почти закончен. Мейрин советует действовать осторожно.",
-    hint: "Пройдите опыт в лаборатории и добейтесь доверия Сельвины 60.",
+    text: "Орден Пепла требует вернуть Юки для суда. Её главный труд почти закончен. Мейрин советует действовать осторожно.",
+    hint: "Пройдите опыт в лаборатории и добейтесь доверия Юки 60.",
     requires: (f) => doneBefore(f, "selvina_2") && !chose(f, "selvina_2", "stop") && stat(f, "selvina", "trust") >= 60,
     choices: [
       {
@@ -207,7 +207,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
           const joins = ["NEUTRAL", "FACTION"].includes(f.territories.old_monastery ?? "");
           const partner = inRomance(f, "selvina") && stat(f, "selvina", "affection") >= 75;
           return {
-            text: `${joins ? "Её труд убеждает даже старейшин: Старый монастырь признаёт вашу власть. " : "Орден отступает. "}${partner ? "Сельвина говорит, что её дом теперь здесь, рядом с вами." : "Сельвина впервые выглядит спокойной."}`,
+            text: `${joins ? "Её труд убеждает даже старейшин: Старый монастырь признаёт вашу власть. " : "Орден отступает. "}${partner ? "Юки говорит, что её дом теперь здесь, рядом с вами." : "Юки впервые выглядит спокойной."}`,
             territory: joins ? "old_monastery" : undefined,
             npcs: { selvina: { loyalty: 12, trust: 6, influence: 10 }, meyrin: { trust: 3 } },
             resources: { knowledge: 10 },
@@ -218,7 +218,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
       {
         code: "exchange",
         label: "Договориться об обмене знаниями",
-        resolve: () => ({ text: "Орден получает копию труда, а вы — доступ к архивам. Сельвина остаётся при дворе.", resources: { knowledge: 20 }, npcs: { selvina: { trust: 4, loyalty: 3 }, meyrin: { trust: 4 } } }),
+        resolve: () => ({ text: "Орден получает копию труда, а вы — доступ к архивам. Юки остаётся при дворе.", resources: { knowledge: 20 }, npcs: { selvina: { trust: 4, loyalty: 3 }, meyrin: { trust: 4 } } }),
       },
     ],
   },
@@ -486,7 +486,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
     kind: "intrigue",
     title: "Две спутницы",
     participants: ["liara", "selvina"],
-    text: "На совете Лиара и Сельвина спорят о бюджете: торговые пути или библиотека. Но все понимают, что спор совсем не о золоте.",
+    text: "На совете Лиара и Юки спорят о бюджете: торговые пути или библиотека. Но все понимают, что спор совсем не о золоте.",
     requires: (f) =>
       present(f, "liara") && present(f, "selvina") && atLeastClose(f, "liara") && atLeastClose(f, "selvina") && Math.max(stat(f, "liara", "jealousy"), stat(f, "selvina", "jealousy")) >= 40,
     choices: [
@@ -498,11 +498,11 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
       {
         code: "liara",
         label: "Поддержать Лиару",
-        resolve: () => ({ text: "Торговые пути получают деньги. Сельвина молча уходит в библиотеку.", npcs: { liara: { influence: 8, affection: 4 }, selvina: { affection: -12, jealousy: 12, loyalty: -5 } }, relations: [{ a: "liara", b: "selvina", rivalry: 12 }] }),
+        resolve: () => ({ text: "Торговые пути получают деньги. Юки молча уходит в библиотеку.", npcs: { liara: { influence: 8, affection: 4 }, selvina: { affection: -12, jealousy: 12, loyalty: -5 } }, relations: [{ a: "liara", b: "selvina", rivalry: 12 }] }),
       },
       {
         code: "selvina",
-        label: "Поддержать Сельвину",
+        label: "Поддержать Юки",
         resolve: () => ({ text: "Библиотека получает новое крыло. Лиара холодно поздравляет соперницу.", npcs: { selvina: { influence: 8, affection: 4 }, liara: { affection: -12, jealousy: 12, loyalty: -5 } }, relations: [{ a: "liara", b: "selvina", rivalry: 12 }] }),
       },
     ],
@@ -657,7 +657,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
       {
         code: "turn",
         label: "Закрыть ворота",
-        resolve: () => ({ text: "Ворота закрыты. Сельвина долго не может на вас смотреть.", npcs: { selvina: { affection: -8, loyalty: -4 }, bram: { trust: 2 } }, morale: -3 }),
+        resolve: () => ({ text: "Ворота закрыты. Юки долго не может на вас смотреть.", npcs: { selvina: { affection: -8, loyalty: -4 }, bram: { trust: 2 } }, morale: -3 }),
       },
     ],
   },
