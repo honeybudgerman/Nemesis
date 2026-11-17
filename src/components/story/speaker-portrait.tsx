@@ -1,5 +1,6 @@
 import { CourtPortrait } from "@/components/characters/court-portrait";
 import { Portrait } from "@/components/characters/portrait";
+import { ImagePortrait, PORTRAIT_IMAGES } from "@/components/characters/portrait-images";
 import { PixelSprite, type Palette } from "@/components/pixel/pixel-sprite";
 import type { Speaker } from "@/data/story/chapters";
 
@@ -52,6 +53,9 @@ export function SpeakerPortrait({ speaker, name, size = 96 }: { speaker: Speaker
   if (speaker === "mentor") return <Portrait kind="mentor" size={size} title={name} />;
   if (speaker === "rival") return <Portrait kind="rival" size={size} title={name} />;
   if (COURT.has(speaker)) return <CourtPortrait code={speaker} size={size} title={name} />;
+  if ((speaker === "bandit" || speaker === "morven") && PORTRAIT_IMAGES[speaker]) {
+    return <ImagePortrait src={PORTRAIT_IMAGES[speaker]} size={size} title={name} ring="var(--danger)" bg="#1a1014" />;
+  }
   if (speaker === "bandit" || speaker === "morven") {
     const rows = speaker === "bandit" ? BANDIT : KNIGHT;
     const palette = speaker === "bandit" ? BANDIT_PALETTE : KNIGHT_PALETTE;
