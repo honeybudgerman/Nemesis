@@ -22,6 +22,17 @@ export interface SceneDef {
   lines: DialogueLine[];
 }
 
+export const FIRST_QUESTS_SCENE: SceneDef = {
+  code: "ch1_first_quests",
+  title: "Открытые ворота",
+  backdrop: "throne",
+  lines: [
+    { speaker: "mentor", text: "Я видел, как ты держишь слово, {hero}. Три дела доведены до конца. У ворот уже ждёт посланник из деревни." },
+    { speaker: "hero", text: "Открой ворота, Орион. Пусть расскажет, чем мы можем помочь." },
+    { speaker: "mentor", text: "Выслушай его. Потом решишь, что обещать деревне и что королевство может дать." },
+  ],
+};
+
 export interface ObjectiveDef {
   code: string;
   label: string;
