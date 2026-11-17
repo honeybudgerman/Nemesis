@@ -19,6 +19,8 @@ const owned = (f: CourtFacts) => Object.values(f.territories).filter((o) => o ==
 const lacks = (f: CourtFacts, cost: Partial<CourtFacts["resources"]>) =>
   (Object.keys(cost) as (keyof CourtFacts["resources"])[]).some((k) => (cost[k] ?? 0) > f.resources[k]) ? "Не хватает ресурсов" : null;
 
+const YUKI_FIRST_QUEST = { affection: 28, trust: 32 };
+
 export const COURT_EVENTS: readonly CourtEventDef[] = [
   // -------------------------------------------------------------------------
   // Liara: the port and the alliance
@@ -130,8 +132,13 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
     title: "Запретная рукопись",
     participants: ["selvina"],
     text: "Юки нужна рукопись из архива Старого монастыря. «Орден не отдаст её просто так. Но без неё мой труд так и останется черновиком».",
-    hint: "Познакомьтесь с Юки и завоюйте немного её симпатии или доверия.",
-    requires: (f) => present(f, "selvina") && acquainted(f, "selvina") && (stat(f, "selvina", "affection") >= 28 || stat(f, "selvina", "trust") >= 32),
+    hint: (f) => {
+      const affection = stat(f, "selvina", "affection");
+      const trust = stat(f, "selvina", "trust");
+      const progress = `Симпатия ${affection}/${YUKI_FIRST_QUEST.affection} или доверие ${trust}/${YUKI_FIRST_QUEST.trust}.`;
+      return acquainted(f, "selvina") ? progress : `Познакомьтесь с Юки. ${progress}`;
+    },
+    requires: (f) => present(f, "selvina") && acquainted(f, "selvina") && (stat(f, "selvina", "affection") >= YUKI_FIRST_QUEST.affection || stat(f, "selvina", "trust") >= YUKI_FIRST_QUEST.trust),
     choices: [
       {
         code: "buy",

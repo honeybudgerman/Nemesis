@@ -301,6 +301,30 @@ export async function getCourtScreen(db: SupabaseClient, userId: string): Promis
   return screenOf(await loadCourt(db, userId, { openEvent: true }));
 }
 
+export async function startPersonalQuest(db: SupabaseClient, userId: string, code: string): Promise<CourtScreen> {
+  const c = await loadCourt(db, userId);
+  const event = EVENT_BY_CODE[code];
+  if (event?.kind !== "quest" || c.facts.resolved[code]) {
+    throw new ApiError("VALIDATION_ERROR", "Этот личный квест недоступен.");
+  }
+  if (c.facts.open.includes(code)) return screenOf(c);
+  if (!event.requires(c.facts)) throw new ApiError("VALIDATION_ERROR", "Сначала выполните условия личного квеста.");
+
+  const result = await rpc<{ status: "opened" | "exists" | "full" }>("open_court_event_with_mode", {
+    p_user_id: userId,
+    p_day: c.today,
+    p_code: code,
+    p_participants: event.participants,
+    p_choices: event.choices.map(({ code, label }) => ({ code, label })),
+    p_max_open: MAX_OPEN_EVENTS,
+    p_manual: true,
+  });
+  if (result.status === "full") {
+    throw new ApiError("VALIDATION_ERROR", "Сначала примите решение по одному из открытых событий двора.");
+  }
+  return screenOf(await loadCourt(db, userId));
+}
+
 async function detailOf(db: SupabaseClient, c: Court, code: string): Promise<NpcDetail> {
   const def = NPC_BY_CODE[code];
   const row = c.rows.find((r) => r.npc_code === code);

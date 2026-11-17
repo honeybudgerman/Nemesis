@@ -72,7 +72,7 @@ export interface CourtEventDef {
   participants: string[];
   text: string;
   /** Hint shown in the quest log while the step is locked. */
-  hint?: string;
+  hint?: string | ((facts: CourtFacts) => string);
   requires: (f: CourtFacts) => boolean;
   choices: ChoiceDef[];
 }

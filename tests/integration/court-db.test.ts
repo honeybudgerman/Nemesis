@@ -85,6 +85,21 @@ run("database: royal court", () => {
   const assign = (userId: string, key: string, position: string, code: string | null, changes: unknown) =>
     svc.query("select public.court_assign($1,$2,$3,$4,$5) as r", [userId, key, position, code, JSON.stringify(changes)]).then((r) => r.rows[0].r as { status: string });
 
+  it("manual quests have their own daily allowance and preserve the open-event cap", async () => {
+    const { userId } = await newPlayer();
+    const start = (code: string) =>
+      svc.query("select public.open_court_event_with_mode($1,$2,$3,$4,$5,$6,true) as r",
+        [userId, DAY, code, ["selvina"], JSON.stringify([{ code: "a", label: "A" }]), 2])
+        .then((r) => r.rows[0].r as { id: string; status: string });
+
+    const personal = await start("selvina_1");
+    expect(personal.status).toBe("opened");
+    expect((await openEvent(userId, "daily_event")).status).toBe("opened");
+    expect((await openEvent(userId, "another_daily_event")).status).toBe("exists");
+    expect(await start("selvina_1")).toEqual({ id: personal.id, status: "exists" });
+    expect((await start("liara_1")).status).toBe("full");
+  });
+
   it("ensure_court seeds the characters and their ties once; newcomers join once", async () => {
     const { userId, profileId, created } = await newPlayer();
     expect(created).toBe(true);

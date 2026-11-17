@@ -303,7 +303,7 @@ export function questLog(f: CourtFacts, npcCode: string): QuestStepView[] {
         title: e.title,
         state,
         choice: r ? (e.choices.find((c) => c.code === r.choice)?.label ?? r.choice) : null,
-        hint: state === "locked" ? (e.hint ?? null) : null,
+        hint: state === "locked" ? (typeof e.hint === "function" ? e.hint(f) : e.hint ?? null) : null,
       };
     });
 }
