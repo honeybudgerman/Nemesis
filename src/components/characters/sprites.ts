@@ -31,41 +31,6 @@ export const HERO_PALETTE: Palette = {
   D: "#26487a",
 };
 
-export const RIVAL_PALETTE: Palette = {
-  G: "#9aa3b5",
-  R: "#c04dd6",
-  K: "#e0565b",
-  H: "#151018",
-  S: "#d9b8a0",
-  M: "#7a3b45",
-  B: "#6b2a7a",
-  D: "#3d1648",
-};
-
-/** 16×12 hooded mentor (Orion). */
-export const MENTOR_SPRITE: readonly string[] = [
-  "......PPPP......",
-  ".....PPPPPP.....",
-  "....PPWWWWPP....",
-  "....PWSSSSWP....",
-  "....PWSKSKWP....",
-  "....PWSSSSWP....",
-  "....PPWWWWPP....",
-  "...PPPWWWWPPP...",
-  "..PPPPPWWPPPPP..",
-  "..PPYPPPPPPYPP..",
-  "..PPPPPPPPPPPP..",
-  "...PPPPPPPPPP...",
-];
-
-export const MENTOR_PALETTE: Palette = {
-  P: "#3a4a8a",
-  W: "#dcdcdc",
-  S: "#e9c9a6",
-  K: "#1a1222",
-  Y: "#e8b84a",
-};
-
 /** 16×12 castle icon for the kingdom panel. */
 export const CASTLE_SPRITE: readonly string[] = [
   "..T.T......T.T..",

@@ -13,6 +13,7 @@ import {
   STAT_LABELS,
   STATUS_LABELS,
   type Interaction,
+  updateCourtNames,
   type NpcStat,
   type NpcStats,
   type Position,
@@ -288,9 +289,9 @@ function screenOf(c: Court): CourtScreen {
       .slice(0, 8)
       .map((e) => ({
         code: e.event_code,
-        title: e.outcome?.title ?? EVENT_BY_CODE[e.event_code]?.title ?? e.event_code,
-        choice: e.outcome?.choice ?? e.selected_choice ?? "",
-        text: e.outcome?.text ?? "",
+        title: updateCourtNames(e.outcome?.title ?? EVENT_BY_CODE[e.event_code]?.title ?? e.event_code),
+        choice: updateCourtNames(e.outcome?.choice ?? e.selected_choice ?? ""),
+        text: updateCourtNames(e.outcome?.text ?? ""),
         day: e.resolved_day ?? e.event_day,
       })),
   };
@@ -327,7 +328,7 @@ async function detailOf(db: SupabaseClient, c: Court, code: string): Promise<Npc
     quests: def.major ? questLog(c.facts, code) : [],
     messages: ((msg.data ?? []) as { id: string; action: Interaction; content: string; source: "AI" | "FALLBACK"; created_at: string }[])
       .reverse()
-      .map((m) => ({ id: m.id, action: m.action, content: m.content, source: m.source, at: m.created_at })),
+      .map((m) => ({ id: m.id, action: m.action, content: updateCourtNames(m.content), source: m.source, at: m.created_at })),
     interactions: INTERACTIONS.filter((a) => a !== "walk" || def.romanceable || def.likes.includes("walk")).map((a) => ({
       action: a,
       name: INTERACTION_DEFS[a].name,
@@ -384,7 +385,7 @@ const blockedError = (reason: string) =>
 async function dialogueLine(userId: string, c: Court, code: string, action: Interaction, statsAfter: NpcStats, status: RelationshipStatus, seed: number) {
   const def = NPC_BY_CODE[code];
   const m = mood(statsAfter);
-  const recent = c.events.filter((e) => e.status === "RESOLVED").slice(-3).map((e) => e.outcome?.title ?? "").filter(Boolean);
+  const recent = c.events.filter((e) => e.status === "RESOLVED").slice(-3).map((e) => updateCourtNames(e.outcome?.title ?? "")).filter(Boolean);
   const ai = await callAi(userId, c.realm.timezone, "COURT_DIALOGUE", {
     messages: courtDialogueMessages({ heroName: c.heroName, npc: def, status, mood: m, action, recentEvents: recent }),
     maxTokens: 220,

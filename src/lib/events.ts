@@ -1,4 +1,4 @@
-import { POSITION_DEFS, POSITIONS, RELATIONSHIP_STATUSES, STATUS_LABELS } from "@/data/court/npcs";
+import { POSITION_DEFS, POSITIONS, RELATIONSHIP_STATUSES, STATUS_LABELS, updateCourtNames } from "@/data/court/npcs";
 import { BUILDINGS, BUILDING_TYPES } from "@/data/realm/buildings";
 import { UNITS, UNIT_TYPES } from "@/data/realm/units";
 import { CHAPTER_BY_CODE } from "@/data/story/chapters";
@@ -44,11 +44,11 @@ export function describeEvent(e: GameEventView): string {
     case "COURT_FOUNDED":
       return "При дворе собрались первые придворные. Их судьбы теперь связаны с вашей.";
     case "COURT_JOINED":
-      return `Ко двору присоединяется ${String(p.name ?? "новый придворный")}.`;
+      return `Ко двору присоединяется ${updateCourtNames(String(p.name ?? "новый придворный"))}.`;
     case "COURT_RELATIONSHIP":
-      return `${String(p.name ?? "")}: ${statusName(p.to).toLowerCase()}.`;
+      return `${updateCourtNames(String(p.name ?? ""))}: ${statusName(p.to).toLowerCase()}.`;
     case "COURT_EVENT":
-      return `${String(p.title ?? "Событие при дворе")}: ${String(p.choice ?? "")}.`;
+      return `${updateCourtNames(String(p.title ?? "Событие при дворе"))}: ${updateCourtNames(String(p.choice ?? ""))}.`;
     case "POSITION_ASSIGNED":
       return p.npc ? `${String(p.name ?? "")} назначен(а): ${positionName(p.position).toLowerCase()}.` : `Должность «${positionName(p.position)}» свободна.`;
     case "TERRITORY_JOINED":
