@@ -8,6 +8,7 @@ import {
   buildChanges,
   commanderSkill,
   courtEconomyBonus,
+  eligibleEvents,
   interactionBlocked,
   interactionDeltas,
   newcomers,
@@ -191,5 +192,80 @@ describe("events", () => {
     const f = facts({ territories: { ...facts().territories, river_fords: "HERO", whisper_woods: "HERO" }, buildings: { palace: 1, academy: 0, barracks: 0, castle: 1 } });
     expect(newcomers(f).sort()).toEqual(["ida", "rein"]);
     expect(newcomers({ ...facts(), resolved: { meyrin_1: { choice: "trust", day: "x" } } })).toEqual(["corvin"]);
+  });
+});
+
+describe("romance recovery", () => {
+  for (const [code, confession] of [["liara", "close"], ["selvina", "stay"]] as const) {
+    it(`${code}: hints and second confession retain a chance after an early attempt`, () => {
+      let f = withNpc(facts(), code, { status: "CLOSE", stats: { affection: 50, trust: 45 } });
+      const choice = EVENT_BY_CODE[`${code}_2`].choices.find((c) => c.code === confession)!;
+      expect(typeof choice.hint).toBe("function");
+      expect(typeof choice.hint === "function" && choice.hint(f)).toContain("50/65");
+      expect(resolveChoice(f, `${code}_2`, confession).outcome.status).toBeUndefined();
+      f.resolved[`${code}_2`] = { choice: confession, day: f.day };
+      f = withNpc(f, code, { stats: { affection: 65, trust: 55 } });
+      const retry = EVENT_BY_CODE[`${code}_second_confession`];
+      expect(retry.requires(f)).toBe(false);
+      f = { ...f, day: "2026-11-21" };
+      expect(retry.requires(f)).toBe(true);
+      expect(resolveChoice(f, retry.code, "confess").changes.npcs[0].status).toBe("ROMANCE");
+      f = withNpc(f, code, { brokenSinceDay: "2026-11-01" });
+      expect(retry.requires(f)).toBe(false);
+      expect(resolveChoice(f, `${code}_2`, confession).outcome.status).toBeUndefined();
+    });
+
+    it(`${code}: commitment follows every third-step political choice`, () => {
+      const event = EVENT_BY_CODE[`${code}_commitment`];
+      for (const choice of EVENT_BY_CODE[`${code}_3`].choices) {
+        let f = withNpc(facts(), code, { status: "ROMANCE", stats: { affection: 75, trust: 60 } });
+        f.resolved[`${code}_3`] = { choice: choice.code, day: "2026-11-19" };
+        expect(event.requires(f)).toBe(true);
+        expect(resolveChoice(f, event.code, "commit").changes.npcs[0].status).toBe("PARTNER");
+        f = withNpc(f, code, { stats: { trust: 59 } });
+        expect(event.requires(f)).toBe(false);
+      }
+    });
+
+    it(`${code}: reconciliation requires seven days even after returning to friendship`, () => {
+      const event = EVENT_BY_CODE[`${code}_reconcile`];
+      let f = withNpc(facts(), code, { status: "BROKEN", brokenSinceDay: "2026-11-14", stats: { affection: 65, trust: 55 } });
+      expect(event.requires(f)).toBe(false);
+      f = { ...f, day: "2026-11-21" };
+      expect(event.requires(f)).toBe(true);
+      expect(resolveChoice(f, event.code, "reconcile").changes.npcs[0].status).toBe("ROMANCE");
+      f = withNpc(f, code, { status: "FRIENDS" });
+      expect(event.requires(f)).toBe(true);
+      f = withNpc(f, code, { stats: { trust: 54 } });
+      expect(event.requires(f)).toBe(false);
+      f = withNpc(f, code, { brokenSinceDay: null, status: "BROKEN", stats: { trust: 55 } });
+      expect(event.requires(f)).toBe(false);
+    });
+  }
+
+  it("expulsion is a deliberate end, and recovery scenes never become quest steps", () => {
+    let f = withNpc(facts(), "liara", { status: "BROKEN", brokenSinceDay: "2026-11-01", stats: { affection: 100, trust: 100 } });
+    f.resolved.liara_2 = { choice: "expel", day: "2026-11-01" };
+    expect(EVENT_BY_CODE.liara_reconcile.requires(f)).toBe(false);
+    expect(questLog(f, "liara")).toHaveLength(3);
+    expect(pickDailyEvent(f, 1, true)).toBeNull();
+    f = withNpc(f, "liara", { status: "PARTNER" });
+    expect(EVENT_BY_CODE.liara_commitment.requires(f)).toBe(false);
+  });
+});
+
+
+describe("subsequent relationship cycles", () => {
+  it("allows a breakup on the reconciliation day and commitment after a later reconciliation", () => {
+    let f = withNpc(facts({ day: "2026-11-28" }), "liara", { status: "FRIENDS", brokenSinceDay: "2026-11-21", stats: { affection: 75, trust: 60 } });
+    f.resolved.liara_reconcile = { choice: "reconcile", day: "2026-11-21" };
+    expect(eligibleEvents(f).map((e) => e.code)).toContain("liara_reconcile");
+    f = withNpc(f, "liara", { status: "ROMANCE", brokenSinceDay: null });
+    f.resolved.liara_reconcile = { choice: "reconcile", day: "2026-11-28" };
+    f.resolved.liara_commitment = { choice: "commit", day: "2026-11-20" };
+    f.resolved.liara_3 = { choice: "trade", day: "2026-11-19" };
+    expect(eligibleEvents(f).map((e) => e.code)).toContain("liara_commitment");
+    f.resolved.liara_commitment = { choice: "decline", day: "2026-11-28" };
+    expect(eligibleEvents(f).map((e) => e.code)).not.toContain("liara_commitment");
   });
 });

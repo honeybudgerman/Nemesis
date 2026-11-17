@@ -10,6 +10,7 @@ export interface NpcState {
   position: Position | null;
   recruited: boolean;
   lastInteractionDay: string | null;
+  brokenSinceDay?: string | null;
   version: number;
 }
 
@@ -55,7 +56,7 @@ export interface Outcome {
 export interface ChoiceDef {
   code: string;
   label: string;
-  hint?: string;
+  hint?: string | ((facts: CourtFacts) => string);
   cost?: Partial<Wallet>;
   /** Reason the option is closed right now, or null. */
   unavailable?: (f: CourtFacts) => string | null;
@@ -64,7 +65,7 @@ export interface ChoiceDef {
 
 export interface CourtEventDef {
   code: string;
-  kind: "quest" | "intrigue" | "politics";
+  kind: "quest" | "romance" | "intrigue" | "politics";
   /** Owner of a personal storyline. */
   npc?: string;
   step?: number;

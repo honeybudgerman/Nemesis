@@ -4,6 +4,7 @@
  * conditions, participants, text, choices and consequences. The numbers are
  * decided here (the engine), never by the AI.
  */
+import { ROMANCE_EVENTS, confessionHint, readyForRomance } from "./romance";
 import type { CourtEventDef, CourtFacts } from "./types";
 
 const npc = (f: CourtFacts, code: string) => f.npcs[code];
@@ -69,9 +70,9 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
       {
         code: "close",
         label: "Простить и предложить быть рядом",
-        hint: "Она решит сама",
+        hint: (f) => confessionHint(f, "liara"),
         resolve: (f) =>
-          stat(f, "liara", "affection") >= 65 && stat(f, "liara", "trust") >= 55
+          readyForRomance(f, "liara")
             ? { text: "Лиара берёт вас за руку: «Тогда пусть купцы ждут свой отчёт вечно». Между вами начинается роман.", npcs: { liara: { affection: 10, trust: 6, loyalty: 6 } }, status: { liara: "ROMANCE" } }
             : { text: "«Мне нужно время, {hero}. Я не хочу ошибиться в тебе». Она остаётся другом, но запоминает эту ночь.", npcs: { liara: { affection: 4, trust: 6 } } },
       },
@@ -173,9 +174,9 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
       {
         code: "stay",
         label: "Остаться с ней до утра",
-        hint: "Она решит сама",
+        hint: (f) => confessionHint(f, "selvina"),
         resolve: (f) =>
-          stat(f, "selvina", "affection") >= 65 && stat(f, "selvina", "trust") >= 55
+          readyForRomance(f, "selvina")
             ? { text: "К рассвету формулы забыты. Юки смеётся впервые за долгое время, и между вами начинается роман.", npcs: { selvina: { affection: 10, trust: 6, loyalty: 6 } }, status: { selvina: "ROMANCE" } }
             : { text: "Вы разговариваете до утра о звёздах и ошибках. «Спасибо, что не ушёл», — говорит она на прощание.", npcs: { selvina: { affection: 5, trust: 6 } } },
       },
@@ -668,6 +669,7 @@ export const COURT_EVENTS: readonly CourtEventDef[] = [
       },
     ],
   },
+  ...ROMANCE_EVENTS,
 ];
 
 export const EVENT_BY_CODE: Readonly<Record<string, CourtEventDef>> = Object.fromEntries(COURT_EVENTS.map((e) => [e.code, e]));

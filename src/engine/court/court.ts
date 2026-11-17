@@ -227,7 +227,15 @@ export function assignmentChanges(f: CourtFacts, position: Position, code: strin
 export const MAX_OPEN_EVENTS = 2;
 
 export function eligibleEvents(f: CourtFacts): CourtEventDef[] {
-  return COURT_EVENTS.filter((e) => !f.resolved[e.code] && !f.open.includes(e.code) && e.requires(f));
+  return COURT_EVENTS.filter((e) => {
+    const previous = f.resolved[e.code];
+    const breakup = e.npc ? f.npcs[e.npc]?.brokenSinceDay : null;
+    const reconciled = e.npc ? f.resolved[`${e.npc}_reconcile`] : null;
+    const newBreak = e.code.endsWith("_reconcile") && !!breakup && !!previous && breakup >= previous.day;
+    const newCommitment = e.code.endsWith("_commitment") && reconciled?.choice === "reconcile"
+      && !!previous && reconciled.day > previous.day;
+    return (!previous || newBreak || newCommitment) && !f.open.includes(e.code) && e.requires(f);
+  });
 }
 
 /** At most one new event per day; storylines first, then intrigues and politics. */
@@ -236,7 +244,8 @@ export function pickDailyEvent(f: CourtFacts, seed: number, openedToday: boolean
   const eligible = eligibleEvents(f);
   if (eligible.length === 0) return null;
   const quests = eligible.filter((e) => e.kind === "quest");
-  const pool = quests.length > 0 ? quests : eligible;
+  const romances = eligible.filter((e) => e.kind === "romance");
+  const pool = quests.length > 0 ? quests : romances.length > 0 ? romances : eligible;
   return pool[Math.floor(createSeededRandom(seed)() * pool.length)];
 }
 
