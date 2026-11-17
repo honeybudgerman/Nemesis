@@ -1,4 +1,5 @@
 import { PixelSprite, type Palette } from "@/components/pixel/pixel-sprite";
+import { ImagePortrait, PORTRAIT_IMAGES } from "./portrait-images";
 
 /** 16×16 busts for court characters: long hair (lady) and short hair with beard slot (lord). */
 const LADY: readonly string[] = [
@@ -42,7 +43,7 @@ const LORD: readonly string[] = [
 const K = "#1a1222";
 const LOOKS: Record<string, { rows: readonly string[]; palette: Palette; bg: string; ring: string }> = {
   liara: { rows: LADY, palette: { H: "#8a3b2a", S: "#e9c39b", K, M: "#b5555a", B: "#2f7d7a", D: "#1d4f4d", G: "#e8b84a" }, bg: "#13262a", ring: "#2f7d7a" },
-  selvina: { rows: LADY, palette: { H: "#d8d4e8", S: "#f0d6c0", K, M: "#a8607a", B: "#5a3a8a", D: "#36225a", G: "#7ab8ec" }, bg: "#1d1530", ring: "#7a5ab0" },
+  selvina: { rows: LADY, palette: { H: "#d8d4e8", S: "#f0d6c0", K, M: "#a8607a", B: "#5a3a8a", D: "#36225a", G: "#7ab8ec" }, bg: "#141a33", ring: "#5a8ad0" },
   torvald: { rows: LORD, palette: { H: "#8d8a99", W: "#a9a6b5", S: "#d9a882", K, M: "#7a4a3a", B: "#5d6b7a", D: "#3a4450", G: "#c0392b" }, bg: "#1b2026", ring: "#5d6b7a" },
   meyrin: { rows: LADY, palette: { H: "#b8b4c4", S: "#e3c2a3", K, M: "#9a5a5a", B: "#2f5a3a", D: "#1d3b25", G: "#e8b84a" }, bg: "#132018", ring: "#3f7a4a" },
   bram: { rows: LORD, palette: { H: "#6b4423", W: "#f0c8a0", S: "#f0c8a0", K, M: "#a0503a", B: "#7a2a3a", D: "#4a1824", G: "#e8b84a" }, bg: "#2a1418", ring: "#a9822f" },
@@ -53,6 +54,8 @@ const LOOKS: Record<string, { rows: readonly string[]; palette: Palette; bg: str
 
 export function CourtPortrait({ code, size = 64, title, dim = false }: { code: string; size?: number; title: string; dim?: boolean }) {
   const look = LOOKS[code] ?? LOOKS.corvin;
+  const img = PORTRAIT_IMAGES[code];
+  if (img) return <ImagePortrait src={img} size={size} title={title} ring={look.ring} bg={look.bg} dim={dim} />;
   return (
     <div
       className="inline-flex shrink-0 items-end justify-center border-2 p-1"
