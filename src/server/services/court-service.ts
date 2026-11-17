@@ -78,6 +78,7 @@ interface EventRow {
   id: string;
   event_code: string;
   event_day: string;
+  opened_manually: boolean;
   status: "OPEN" | "RESOLVED";
   selected_choice: string | null;
   outcome: { title?: string; choice?: string; text?: string } | null;
@@ -111,7 +112,7 @@ function buildingLevels(realm: Realm) {
 async function loadRows(db: SupabaseClient, profileId: string) {
   const [n, e] = await Promise.all([
     db.from("court_npcs").select("id, npc_code, loyalty, affection, trust, ambition, jealousy, influence, relationship_status, position, recruited_at, last_interaction_day, version").eq("game_profile_id", profileId),
-    db.from("court_events").select("id, event_code, event_day, status, selected_choice, outcome, resolved_day").eq("game_profile_id", profileId).order("created_at"),
+    db.from("court_events").select("id, event_code, event_day, opened_manually, status, selected_choice, outcome, resolved_day").eq("game_profile_id", profileId).order("created_at"),
   ]);
   if (n.error) throw fromDbError(n.error);
   if (e.error) throw fromDbError(e.error);
@@ -181,7 +182,7 @@ async function loadCourt(db: SupabaseClient, userId: string, opts: { openEvent?:
   }
 
   if (opts.openEvent) {
-    const openedToday = events.some((e) => e.event_day === today);
+    const openedToday = events.some((e) => e.event_day === today && !e.opened_manually);
     const pick = pickDailyEvent(facts, hashString(`court:${realm.profileId}:${today}`), openedToday);
     if (pick) {
       await rpc("open_court_event", {
