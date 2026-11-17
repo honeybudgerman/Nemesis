@@ -19,6 +19,7 @@ import {
   type Position,
   type RelationshipStatus,
 } from "@/data/court/npcs";
+import { isNpcAway } from "@/data/court/availability";
 import type { CourtFacts, NpcState, Wallet } from "@/data/court/types";
 import { TERRITORIES } from "@/data/realm/map";
 import { cleanDialogue, courtDialogueMessages } from "@/engine/ai/court";
@@ -72,6 +73,8 @@ interface NpcRow {
   recruited_at: string | null;
   last_interaction_day: string | null;
   broken_since_day?: string | null;
+  status_since_day?: string | null;
+  absent_until_day?: string | null;
   version: number;
 }
 
@@ -80,6 +83,7 @@ interface EventRow {
   event_code: string;
   event_day: string;
   opened_manually: boolean;
+  created_at: string;
   status: "OPEN" | "RESOLVED";
   selected_choice: string | null;
   outcome: { title?: string; choice?: string; text?: string } | null;
@@ -110,14 +114,26 @@ function buildingLevels(realm: Realm) {
   return lvl;
 }
 
+async function loadEventRows(db: SupabaseClient, profileId: string): Promise<EventRow[]> {
+  const events: EventRow[] = [];
+  const pageSize = 200;
+  for (let offset = 0; ; offset += pageSize) {
+    const result = await db.from("court_events").select("*").eq("game_profile_id", profileId)
+      .order("created_at").order("id").range(offset, offset + pageSize - 1);
+    if (result.error) throw fromDbError(result.error);
+    const page = (result.data ?? []) as EventRow[];
+    events.push(...page);
+    if (page.length < pageSize) return events;
+  }
+}
+
 async function loadRows(db: SupabaseClient, profileId: string) {
-  const [n, e] = await Promise.all([
+  const [n, events] = await Promise.all([
     db.from("court_npcs").select("*").eq("game_profile_id", profileId),
-    db.from("court_events").select("*").eq("game_profile_id", profileId).order("created_at"),
+    loadEventRows(db, profileId),
   ]);
   if (n.error) throw fromDbError(n.error);
-  if (e.error) throw fromDbError(e.error);
-  return { rows: (n.data ?? []) as NpcRow[], events: (e.data ?? []) as EventRow[] };
+  return { rows: (n.data ?? []) as NpcRow[], events };
 }
 
 function factsOf(realm: Realm, today: string, heroName: string, heroLevel: number, rows: NpcRow[], events: EventRow[]): CourtFacts {
@@ -131,6 +147,8 @@ function factsOf(realm: Realm, today: string, heroName: string, heroLevel: numbe
       recruited: r.recruited_at != null,
       lastInteractionDay: r.last_interaction_day,
       brokenSinceDay: r.broken_since_day ?? null,
+      statusSinceDay: r.status_since_day ?? null,
+      absentUntilDay: r.absent_until_day ?? null,
       version: r.version,
     };
   }
@@ -139,7 +157,7 @@ function factsOf(realm: Realm, today: string, heroName: string, heroLevel: numbe
     heroName,
     heroLevel,
     npcs,
-    resolved: Object.fromEntries(events.filter((e) => e.status === "RESOLVED").map((e) => [e.event_code, { choice: e.selected_choice ?? "", day: e.resolved_day ?? e.event_day }])),
+    resolved: Object.fromEntries(events.filter((e) => e.status === "RESOLVED").sort((a, b) => (a.resolved_day ?? a.event_day).localeCompare(b.resolved_day ?? b.event_day)).map((e) => [e.event_code, { choice: e.selected_choice ?? "", day: e.resolved_day ?? e.event_day }])),
     open: events.filter((e) => e.status === "OPEN").map((e) => e.event_code),
     territories: Object.fromEntries(realm.territories.map((t) => [t.territory_code, t.owner_type])),
     resources: { gold: realm.kingdom.gold, food: realm.kingdom.food, knowledge: realm.kingdom.knowledge, influence: realm.kingdom.influence },
@@ -218,6 +236,7 @@ function card(c: Court, code: string): NpcCard {
     major: def.major,
     romanceable: def.romanceable,
     recruited: n.recruited,
+    absentUntilDay: isNpcAway(n, c.today) ? n.absentUntilDay : null,
     joinHint: n.recruited ? null : (def.joins?.text ?? null),
     status: n.status,
     position: n.position,
@@ -288,7 +307,7 @@ function screenOf(c: Court): CourtScreen {
     dailyBonus: courtEconomyBonus(npcList, c.facts),
     history: c.events
       .filter((e) => e.status === "RESOLVED")
-      .reverse()
+      .sort((a, b) => (b.resolved_day ?? b.event_day).localeCompare(a.resolved_day ?? a.event_day) || b.created_at.localeCompare(a.created_at))
       .slice(0, 8)
       .map((e) => ({
         code: e.event_code,
@@ -388,6 +407,7 @@ export function describeChanges(f: CourtFacts, ch: CourtChanges): string[] {
       .filter(([, d]) => d !== 0)
       .map(([k, d]) => `${STAT_LABELS[k].toLowerCase()} ${d > 0 ? "+" : ""}${d}`);
     if (parts.length) out.push(`${NPC_BY_CODE[n.code].name}: ${parts.join(", ")}`);
+    if (n.absentUntilDay) out.push(`${NPC_BY_CODE[n.code].name}: вернётся ${n.absentUntilDay}`);
     if (n.status !== before.status) out.push(`${NPC_BY_CODE[n.code].name}: ${STATUS_LABELS[n.status].toLowerCase()}`);
     if (n.position !== before.position) out.push(n.position ? `${NPC_BY_CODE[n.code].name} назначен(а): ${POSITION_DEFS[n.position].name.toLowerCase()}` : `${NPC_BY_CODE[n.code].name} снят(а) с должности`);
   }
@@ -402,7 +422,7 @@ export function describeChanges(f: CourtFacts, ch: CourtChanges): string[] {
 // Actions
 // ---------------------------------------------------------------------------
 const toPayload = (ch: CourtChanges) => ({
-  npcs: ch.npcs.map((n) => ({ code: n.code, expected_version: n.expectedVersion, stats: n.stats, status: n.status, position: n.position })),
+  npcs: ch.npcs.map((n) => ({ code: n.code, expected_version: n.expectedVersion, stats: n.stats, status: n.status, position: n.position, ...(n.absentUntilDay !== undefined ? { absent_until_day: n.absentUntilDay } : {}) })),
   relations: ch.relations,
   resources: ch.resources,
   morale: ch.morale,
@@ -488,7 +508,7 @@ export async function choose(db: SupabaseClient, userId: string, input: { eventI
     if (blocked) throw blockedError(blocked);
 
     const def = EVENT_BY_CODE[ev.event_code];
-    if (def.kind === "romance" && !def.requires(c.facts)) {
+    if (def.kind === "romance" && !def.requires(c.facts) && !def.choices.find((c) => c.code === input.choice)?.allowWhenUnavailable) {
       throw new ApiError("CHOICE_UNAVAILABLE", "Условия этого разговора изменились. Сначала восстановите доверие.");
     }
     const { outcome, changes } = resolveChoice(c.facts, ev.event_code, input.choice);

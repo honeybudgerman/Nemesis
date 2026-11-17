@@ -188,9 +188,10 @@ function NpcTile({ n, active, onClick }: { n: NpcCard; active: boolean; onClick:
       className={`pixel-panel flex h-full w-full flex-col items-center gap-1 p-2 text-center ${active ? "pixel-panel-gold" : ""}`}
       style={active ? { outline: "2px solid var(--gold)", outlineOffset: -2 } : undefined}
     >
-      <CourtPortrait code={n.code} size={56} title={n.name} dim={!n.recruited} />
+      <CourtPortrait code={n.code} size={56} title={n.name} dim={!n.recruited || !!n.absentUntilDay} />
       <span className="font-display text-sm leading-tight">{n.name}</span>
       <span className="text-[11px] leading-tight text-muted">{n.recruited ? ROLE_LABELS[n.role] : "Ещё не при дворе"}</span>
+      {n.absentUntilDay && <span className="text-[11px] text-mana">В поездке до {n.absentUntilDay}</span>}
       {n.recruited && (
         <>
           <span className={`border px-1 text-[10px] leading-4 ${STATUS_STYLE[n.status]}`}>{STATUS_LABELS[n.status]}</span>
@@ -230,7 +231,7 @@ function NpcPanel({ code, card, preview }: { code: string; card: NpcCard; previe
   return (
     <section className="pixel-panel p-4" aria-label={c.name}>
       <div className="flex gap-3">
-        <CourtPortrait code={c.code} size={88} title={c.name} dim={!c.recruited} />
+        <CourtPortrait code={c.code} size={88} title={c.name} dim={!c.recruited || !!c.absentUntilDay} />
         <div className="min-w-0">
           <h2 className="font-display text-xl leading-tight">{c.name}</h2>
           <div className="text-sm text-muted">
@@ -247,6 +248,7 @@ function NpcPanel({ code, card, preview }: { code: string; card: NpcCard; previe
         </div>
       </div>
 
+      {c.absentUntilDay && <p className="mt-2 text-sm text-mana">В поездке до {c.absentUntilDay}. Обязанности при дворе выполняют помощники.</p>}
       {c.recruited && (
         <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
           {NPC_STATS.map((k) => (
@@ -403,7 +405,7 @@ function PositionsPanel({ s }: { s: CourtScreen }) {
                 {p.candidates.map((c) => (
                   <option key={c.code} value={c.code} disabled={!!c.blocked && c.code !== p.holder}>
                     {c.name}
-                    {c.blocked && c.code !== p.holder ? " (нет при дворе)" : ""}
+                    {c.blocked && c.code !== p.holder ? ` (${c.blocked})` : ""}
                   </option>
                 ))}
               </select>
@@ -425,7 +427,7 @@ function HistoryPanel({ s }: { s: CourtScreen }) {
       ) : (
         <ul className="mt-2 grid gap-2 text-sm">
           {s.history.map((h) => (
-            <li key={h.code} className="border-l-4 border-gold-dim pl-2">
+            <li key={`${h.code}:${h.day}`} className="border-l-4 border-gold-dim pl-2">
               <div className="flex justify-between gap-2">
                 <span className="font-semibold">{h.title}</span>
                 <span className="shrink-0 text-xs text-muted">{new Date(h.day).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</span>
