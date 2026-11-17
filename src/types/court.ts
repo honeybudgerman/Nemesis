@@ -12,6 +12,7 @@ export interface NpcCard {
   romanceable: boolean;
   recruited: boolean;
   joinHint: string | null;
+  absentUntilDay?: string | null;
   status: RelationshipStatus;
   position: Position | null;
   stats: NpcStats;

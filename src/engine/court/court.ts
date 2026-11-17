@@ -16,6 +16,8 @@ import {
   type RelationshipStatus,
 } from "@/data/court/npcs";
 import type { CourtEventDef, CourtFacts, NpcState, Outcome, RelationDelta, Wallet } from "@/data/court/types";
+import { isNpcAway } from "@/data/court/availability";
+import { daysSince } from "@/data/court/romance";
 import { createSeededRandom } from "@/lib/random";
 
 export const clampStat = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
@@ -52,6 +54,7 @@ export interface NpcChange {
   stats: NpcStats;
   status: RelationshipStatus;
   position: Position | null;
+  absentUntilDay?: string | null;
 }
 
 export interface CourtChanges {
@@ -67,9 +70,9 @@ type Deltas = Record<string, Partial<NpcStats>>;
 export function buildChanges(
   f: CourtFacts,
   deltas: Deltas,
-  extra: { status?: Record<string, RelationshipStatus>; met?: string[]; positions?: Record<string, Position | null>; resources?: Partial<Wallet>; morale?: number; relations?: RelationDelta[]; territory?: string | null } = {},
+  extra: { status?: Record<string, RelationshipStatus>; met?: string[]; positions?: Record<string, Position | null>; resources?: Partial<Wallet>; morale?: number; relations?: RelationDelta[]; territory?: string | null; absentUntil?: Record<string, string | null> } = {},
 ): CourtChanges {
-  const touched = new Set([...Object.keys(deltas), ...Object.keys(extra.status ?? {}), ...(extra.met ?? []), ...Object.keys(extra.positions ?? {})]);
+  const touched = new Set([...Object.keys(deltas), ...Object.keys(extra.status ?? {}), ...(extra.met ?? []), ...Object.keys(extra.positions ?? {}), ...Object.keys(extra.absentUntil ?? {})]);
   const npcs: NpcChange[] = [];
   for (const code of touched) {
     const n = f.npcs[code];
@@ -80,6 +83,7 @@ export function buildChanges(
     npcs.push({
       code,
       expectedVersion: n.version,
+      ...(extra.absentUntil && code in extra.absentUntil ? { absentUntilDay: extra.absentUntil[code] } : {}),
       stats,
       status: statusAfter(def, n.status, stats, { met: extra.met?.includes(code), explicit: extra.status?.[code] }),
       position: extra.positions && code in extra.positions ? extra.positions[code] : n.position,
@@ -101,6 +105,7 @@ export const GIFT_AFFECTION_OVER_TRUST = 15;
 
 export function interactionBlocked(n: NpcState | undefined, action: Interaction, day: string, gold: number): string | null {
   if (!n || !n.recruited) return "Этого персонажа пока нет при дворе";
+  if (isNpcAway(n, day)) return `Персонаж в поездке. Вернётся ${n.absentUntilDay}.`;
   if (n.lastInteractionDay === day) return "Сегодня вы уже уделили время этому персонажу";
   if (action === "gift" && gold < (INTERACTION_DEFS.gift.cost?.gold ?? 0)) return "Не хватает золота";
   if (action === "walk" && !WARM.includes(n.status)) return "Нужна дружба";
@@ -196,6 +201,7 @@ export function assignBlocked(f: CourtFacts, position: Position, code: string | 
   const def = NPC_BY_CODE[code];
   const n = f.npcs[code];
   if (!def || !n?.recruited) return "Этого персонажа пока нет при дворе";
+  if (isNpcAway(n, f.day)) return "Назначение можно обсудить после возвращения";
   if (!def.positions.includes(position)) return "Эта должность не подходит персонажу";
   if (n.position === position) return "Уже на этой должности";
   return null;
@@ -234,7 +240,9 @@ export function eligibleEvents(f: CourtFacts): CourtEventDef[] {
     const newBreak = e.code.endsWith("_reconcile") && !!breakup && !!previous && breakup >= previous.day;
     const newCommitment = e.code.endsWith("_commitment") && reconciled?.choice === "reconcile"
       && !!previous && reconciled.day > previous.day;
-    return (!previous || newBreak || newCommitment) && !f.open.includes(e.code) && e.requires(f);
+    const cooledDown = !!previous && e.cooldownDays !== undefined && daysSince(f.day, previous.day) >= e.cooldownDays;
+    return (!previous || newBreak || newCommitment || cooledDown) && !f.open.includes(e.code)
+      && !e.participants.some((code) => isNpcAway(f.npcs[code], f.day)) && e.requires(f);
   });
 }
 
@@ -253,6 +261,8 @@ export function choiceBlocked(f: CourtFacts, eventCode: string, choiceCode: stri
   const e = EVENT_BY_CODE[eventCode];
   const c = e?.choices.find((x) => x.code === choiceCode);
   if (!e || !c) return "Такого варианта нет";
+  if (c.allowWhenUnavailable) return null;
+  if (e.participants.some((code) => isNpcAway(f.npcs[code], f.day))) return "Разговор продолжится после возвращения участников";
   return c.unavailable?.(f) ?? null;
 }
 
@@ -272,6 +282,7 @@ export function resolveChoice(f: CourtFacts, eventCode: string, choiceCode: stri
     morale: outcome.morale,
     relations: outcome.relations,
     territory,
+    absentUntil: outcome.absentUntil,
   });
   return { outcome: { ...outcome, text: outcome.text.replaceAll("{hero}", f.heroName) }, changes };
 }
@@ -301,7 +312,7 @@ export interface QuestStepView {
 }
 
 export function questLog(f: CourtFacts, npcCode: string): QuestStepView[] {
-  return COURT_EVENTS.filter((e) => e.kind === "quest" && e.npc === npcCode)
+  return COURT_EVENTS.filter((e) => e.kind === "quest" && !e.cooldownDays && e.npc === npcCode)
     .sort((a, b) => (a.step ?? 0) - (b.step ?? 0))
     .map((e) => {
       const r = f.resolved[e.code];

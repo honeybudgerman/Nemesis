@@ -11,21 +11,27 @@ export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 const ROOT = join(__dirname, "..", "..");
 
-export async function createTestDatabase(): Promise<{ url: string; drop: () => Promise<void> }> {
+export async function createTestDatabase(throughMigration?: string): Promise<{ url: string; drop: () => Promise<void> }> {
   if (!TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL not set");
   const name = `nemesis_it_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
   const admin = new Client({ connectionString: TEST_DATABASE_URL });
   await admin.connect();
   await admin.query(`create database ${name}`);
-  await admin.end();
 
   const url = new URL(TEST_DATABASE_URL);
   url.pathname = `/${name}`;
   const db = new Client({ connectionString: url.toString() });
   await db.connect();
-  await db.query(readFileSync(join(ROOT, "tests/integration/auth-stub.sql"), "utf8"));
+  try {
+    // Roles are cluster-wide even though each suite owns a different database.
+    // Hold the lock on the shared admin database while creating the auth roles.
+    await admin.query("select pg_advisory_lock(73112201)");
+    await db.query(readFileSync(join(ROOT, "tests/integration/auth-stub.sql"), "utf8"));
+  } finally {
+    await admin.end(); // Releasing the session also releases its advisory lock.
+  }
   const dir = join(ROOT, "supabase/migrations");
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql") && (!throughMigration || f <= throughMigration)).sort()) {
     await db.query(readFileSync(join(dir, file), "utf8"));
   }
   await db.end();

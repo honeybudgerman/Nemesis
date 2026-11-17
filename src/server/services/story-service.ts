@@ -1,12 +1,12 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { updateCourtNames } from "@/data/court/npcs";
+import { NPCS, updateCourtNames } from "@/data/court/npcs";
 import { CHAPTERS, CHAPTER_BY_CODE, FIRST_QUESTS_SCENE, type ChapterDef, type SceneDef } from "@/data/story/chapters";
 import { EMPTY_FACTS, PROGRESS_METRICS, type ProgressFacts } from "@/data/story/progress";
 import { ACHIEVEMENTS, ITEM_BY_CODE, ITEMS, TITLE_BY_CODE, TITLES } from "@/data/story/rewards";
 import type { Tactic } from "@/data/realm/units";
 import { UNIT_TYPES } from "@/data/realm/units";
-import { chronicleMessages, cleanChronicle } from "@/engine/ai/story";
+import { chronicleMessages, cleanChronicle, chronicleFallback, type ChronicleRelationship } from "@/engine/ai/story";
 import { armyPower, estimateRisk, resolveBattle, type Commander } from "@/engine/realm/battle";
 import {
   bossBlocked,
@@ -517,11 +517,24 @@ export async function chapterChronicle(db: SupabaseClient, userId: string, input
       .order("created_at")
       .limit(8),
   ]);
+  if (p.error) throw fromDbError(p.error);
+  if (ev.error) throw fromDbError(ev.error);
+  const relationships: ChronicleRelationship[] = (await Promise.all(NPCS.filter((n) => n.romanceable).map(async (npc) => {
+    const result = await db.from("game_events").select("payload").eq("game_profile_id", realm.profileId)
+      .eq("event_type", "COURT_RELATIONSHIP").contains("payload", { npc: npc.code })
+      .lte("created_at", row.completed_at!).order("created_at", { ascending: false }).limit(1)
+      .maybeSingle<{ payload: { to?: string } }>();
+    if (result.error) throw fromDbError(result.error);
+    const status = result.data?.payload.to;
+    return status === "ROMANCE" || status === "PARTNER" ? [{ name: npc.name, status } satisfies ChronicleRelationship] : [];
+  }))).flat();
   const hero = p.data?.hero_name ?? "Правитель";
+  const fallback = chronicleFallback(fillHero(ch.chronicle, hero), relationships);
   const decision = row.decision ? ch.decision.choices.find((c) => c.code === row.decision)?.label ?? null : null;
   const ai = await callAi(userId, realm.timezone, "STORY_CHRONICLE", {
     messages: chronicleMessages({
       heroName: hero,
+      relationships,
       kingdomName: p.data?.kingdom_name ?? "",
       chapterNumber: ch.number,
       chapterTitle: ch.title,
@@ -540,9 +553,9 @@ export async function chapterChronicle(db: SupabaseClient, userId: string, input
   const saved = await rpc<{ chronicle: string }>("story_save_chronicle", {
     p_user_id: userId,
     p_chapter: ch.code,
-    p_text: text ?? fillHero(ch.chronicle, hero),
+    p_text: text ?? fallback,
     p_source: source,
   });
   // Another request may have written it first: whatever is stored wins.
-  return { chronicle: updateCourtNames(saved.chronicle), source: saved.chronicle === text ? "AI" : saved.chronicle === fillHero(ch.chronicle, hero) ? "FALLBACK" : source };
+  return { chronicle: updateCourtNames(saved.chronicle), source: saved.chronicle === text ? "AI" : saved.chronicle === fallback ? "FALLBACK" : source };
 }

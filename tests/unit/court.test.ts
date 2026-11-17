@@ -269,3 +269,48 @@ describe("subsequent relationship cycles", () => {
     expect(eligibleEvents(f).map((e) => e.code)).not.toContain("liara_commitment");
   });
 });
+
+describe("romance life", () => {
+  for (const code of ["liara", "selvina"] as const) {
+    it(`${code}: career support gives a fixed return date and preserves stats during a long absence`, () => {
+      let f = withNpc(facts(), code, { status: "ROMANCE", statusSinceDay: "2026-11-19", stats: { ambition: 40 } });
+      const beforeStats = { ...f.npcs[code].stats };
+      const trial = EVENT_BY_CODE[`${code}_career_trial`];
+      expect(trial.requires(f)).toBe(true);
+      const support = resolveChoice(f, trial.code, "support");
+      const change = support.changes.npcs.find((n) => n.code === code)!;
+      expect(change.absentUntilDay).toBe("2026-11-23");
+      expect(change.stats.trust).toBe(f.npcs[code].stats.trust + 6);
+      expect(change.stats.loyalty).toBe(f.npcs[code].stats.loyalty + 5);
+      const stay = resolveChoice(f, trial.code, "stay").changes.npcs[0];
+      expect(stay.stats.affection).toBe(f.npcs[code].stats.affection + 8);
+      expect(stay.stats.loyalty).toBe(f.npcs[code].stats.loyalty - 3);
+      f = withNpc(f, code, { absentUntilDay: change.absentUntilDay });
+      expect(interactionBlocked(f.npcs[code], "talk", "2026-11-22", 500)).toContain("поездке");
+      expect(interactionBlocked(f.npcs[code], "talk", "2026-11-23", 500)).toBeNull();
+      expect(interactionBlocked(f.npcs[code], "talk", "2027-01-01", 500)).toBeNull();
+      expect(eligibleEvents(f).map((e) => e.code)).not.toContain(trial.code);
+      expect(f.npcs[code].stats).toEqual(beforeStats);
+    });
+
+    it(`${code}: evenings recur after seven days and anniversaries after thirty days in PARTNER`, () => {
+      let f = withNpc(facts(), code, { status: "PARTNER", statusSinceDay: "2026-10-22" });
+      const evening = `${code}_partner_evening`;
+      const anniversary = `${code}_partner_anniversary`;
+      f.resolved[evening] = { choice: "talk", day: "2026-11-14" };
+      expect(eligibleEvents(f).map((e) => e.code)).not.toContain(evening);
+      expect(EVENT_BY_CODE[anniversary].requires(f)).toBe(false);
+      f = { ...f, day: "2026-11-21" };
+      expect(eligibleEvents(f).map((e) => e.code)).toContain(evening);
+      expect(EVENT_BY_CODE[anniversary].requires(f)).toBe(true);
+      f.resolved[anniversary] = { choice: "celebrate", day: f.day };
+      expect(eligibleEvents(f).map((e) => e.code)).not.toContain(anniversary);
+      f = { ...f, day: "2026-12-21" };
+      expect(eligibleEvents(f).map((e) => e.code)).toContain(anniversary);
+      f = withNpc(f, code, { status: "BROKEN" });
+      expect(eligibleEvents(f).map((e) => e.code)).not.toContain(anniversary);
+      expect(questLog(f, code)).toHaveLength(3);
+      expect(pickDailyEvent(f, 1, true)).toBeNull();
+    });
+  }
+});

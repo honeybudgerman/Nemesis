@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { STARTING_HERO_STATS, STARTING_RESOURCES } from "@/data/kingdom";
+import { COURT_EVENTS } from "@/data/court/events";
 import { NPCS, STARTING_RELATIONS } from "@/data/court/npcs";
 import { MAP_CODE, neighboursOf, TERRITORIES } from "@/data/realm/map";
 import { STARTING_ARMY } from "@/data/realm/units";
@@ -79,9 +80,9 @@ run("database: royal court", () => {
   const openEvent = (userId: string, code: string, day = DAY, choices = [{ code: "a", label: "A" }, { code: "b", label: "B" }], max = 2) =>
     svc.query("select public.open_court_event($1,$2,$3,$4,$5,$6) as r", [userId, day, code, ["liara"], JSON.stringify(choices), max]).then((r) => r.rows[0].r as { status: string; id: string });
 
-  const choose = (userId: string, key: string, eventId: string, choice: string, changes: unknown) =>
+  const choose = (userId: string, key: string, eventId: string, choice: string, changes: unknown, day = DAY) =>
     svc
-      .query("select public.court_choose($1,$2,$3,$4,$5,$6,$7) as r", [userId, key, eventId, choice, DAY, JSON.stringify(changes), JSON.stringify({ title: "T", choice: "C", text: "X" })])
+      .query("select public.court_choose($1,$2,$3,$4,$5,$6,$7) as r", [userId, key, eventId, choice, day, JSON.stringify(changes), JSON.stringify({ title: "T", choice: "C", text: "X" })])
       .then((r) => r.rows[0].r as { status: string });
 
   const assign = (userId: string, key: string, position: string, code: string | null, changes: unknown) =>
@@ -199,7 +200,7 @@ run("database: royal court", () => {
     expect((await interact(userId, "recover-friends", "liara", { npcs: [change(liara, { affection: 65, trust: 55 }, { status: "FRIENDS" })] }, "2026-11-21")).status).toBe("applied");
     liara = await npc(profileId, "liara");
     expect(liara.broken_since_day.toISOString().slice(0, 10)).toBe(DAY);
-    const ev = await openEvent(userId, "liara_reconcile", "2026-11-22", [{ code: "reconcile", label: "Начать заново" }]);
+    let ev = await openEvent(userId, "liara_reconcile", "2026-11-22", [{ code: "reconcile", label: "Начать заново" }]);
     const apply = (key: string, day: string, row = liara) => svc.query(
       "select public.court_choose($1,$2,$3,'reconcile',$4,$5,$6) as r",
       [userId, key, ev.id, day, JSON.stringify({ npcs: [change(row, {}, { status: "ROMANCE" })] }), JSON.stringify({ title: "Второй шанс", choice: "Да", text: "Согласие" })],
@@ -216,11 +217,13 @@ run("database: royal court", () => {
     await interact(userId, "second-recovery-key", "liara", { npcs: [change(liara, { affection: 65, trust: 55 }, { status: "FRIENDS" })] }, "2026-11-28");
     const reopened = await openEvent(userId, "liara_reconcile", "2026-12-04", [{ code: "reconcile", label: "Начать заново" }]);
     expect(reopened.status).toBe("opened");
-    expect(reopened.id).toBe(ev.id);
+    expect(reopened.id).not.toBe(ev.id);
     liara = await npc(profileId, "liara");
     // An old action key must not resolve the newly reopened conversation.
     expect((await apply("consent-reconcile", "2026-12-04")).status).toBe("duplicate");
-    expect((await svc.query("select status from court_events where id = $1", [ev.id])).rows[0].status).toBe("OPEN");
+    expect((await svc.query("select status from court_events where id = $1", [reopened.id])).rows[0].status).toBe("OPEN");
+    await expect(apply("delayed-old-dialogue", "2026-12-04")).rejects.toThrow(/EVENT_NOT_OPEN/);
+    ev = reopened;
     expect((await apply("consent-reconcile-again", "2026-12-04")).status).toBe("applied");
     expect((await svc.query("select total_xp from game_profiles where id = $1", [profileId])).rows[0].total_xp).toBe(beforeXp);
   });
@@ -288,6 +291,75 @@ run("database: royal court", () => {
     } finally {
       await Promise.all(clients.map((client) => client.end()));
     }
+  });
+
+  it("recurrence rules mirror engine cooldowns and preserve every occurrence and action key", async () => {
+    const expected = COURT_EVENTS.filter((e) => e.cooldownDays).map((e) => ({ event_code: e.code, cooldown_days: e.cooldownDays })).sort((a, b) => a.event_code.localeCompare(b.event_code));
+    const rules = await svc.query("select event_code, cooldown_days from court_event_rules order by event_code");
+    expect(rules.rows).toEqual(expected);
+    const { userId, profileId } = await newPlayer();
+    await svc.query("begin");
+    await svc.query("select set_config('nemesis.court_day', '2026-10-20', true)");
+    await svc.query("update court_npcs set relationship_status = 'PARTNER', affection = 75, trust = 60 where game_profile_id = $1 and npc_code = 'liara'", [profileId]);
+    await svc.query("commit");
+    const first = await openEvent(userId, "liara_partner_evening", DAY);
+    expect(first.status).toBe("opened");
+    expect((await choose(userId, "first-evening-key", first.id, "a", { npcs: [] })).status).toBe("applied");
+    expect((await openEvent(userId, "liara_partner_evening", "2026-11-26")).status).toBe("exists");
+    const second = await openEvent(userId, "liara_partner_evening", "2026-11-27");
+    expect(second.status).toBe("opened");
+    expect(second.id).not.toBe(first.id);
+    expect((await choose(userId, "first-evening-key", second.id, "a", { npcs: [] }, "2026-11-27")).status).toBe("duplicate");
+    expect((await svc.query("select status from court_events where id = $1", [second.id])).rows[0].status).toBe("OPEN");
+    await expect(choose(userId, "delayed-first-key", first.id, "a", { npcs: [] }, "2026-11-27")).rejects.toThrow(/EVENT_NOT_OPEN/);
+    expect((await choose(userId, "second-evening-key", second.id, "a", { npcs: [] }, "2026-11-27")).status).toBe("applied");
+    expect((await svc.query("select count(*)::int as n from court_events where game_profile_id = $1 and event_code = 'liara_partner_evening' and status = 'RESOLVED'", [profileId])).rows[0].n).toBe(2);
+    expect((await openEvent(userId, "liara_partner_evening", "2026-12-03")).status).toBe("exists");
+  });
+
+  it("tracks PARTNER tenure and gates anniversaries without resetting it on stat changes", async () => {
+    const { userId, profileId } = await newPlayer();
+    await svc.query("begin");
+    await svc.query("select set_config('nemesis.court_day', $1, true)", [DAY]);
+    await svc.query("update court_npcs set relationship_status = 'PARTNER', affection = 75, trust = 60 where game_profile_id = $1 and npc_code = 'liara'", [profileId]);
+    await svc.query("commit");
+    const liara = await npc(profileId, "liara");
+    expect(liara.status_since_day.toISOString().slice(0, 10)).toBe(DAY);
+    await interact(userId, "tenure-stats-only", "liara", { npcs: [change(liara, { affection: 76 })] }, "2026-11-21");
+    expect((await npc(profileId, "liara")).status_since_day.toISOString().slice(0, 10)).toBe(DAY);
+    expect((await openEvent(userId, "liara_partner_anniversary", "2026-12-19")).status).toBe("unavailable");
+    const anniversary = await openEvent(userId, "liara_partner_anniversary", "2026-12-20");
+    expect(anniversary.status).toBe("opened");
+    await choose(userId, "anniversary-first", anniversary.id, "a", { npcs: [] }, "2026-12-20");
+    expect((await openEvent(userId, "liara_partner_anniversary", "2027-01-18")).status).toBe("exists");
+    expect((await openEvent(userId, "liara_partner_anniversary", "2027-01-19")).status).toBe("opened");
+  });
+
+  it("career absence is versioned and blocks meetings until the fixed return day", async () => {
+    const { userId, profileId } = await newPlayer();
+    const event = await openEvent(userId, "liara_career_trial");
+    const liara = await npc(profileId, "liara");
+    const payload = { npcs: [{ ...change(liara, { trust: 36 }), absent_until_day: "2026-11-23" }] };
+    expect((await choose(userId, "career-support-key", event.id, "a", payload)).status).toBe("applied");
+    expect((await choose(userId, "career-support-key", event.id, "a", payload)).status).toBe("duplicate");
+    const away = await npc(profileId, "liara");
+    expect(away.absent_until_day.toISOString().slice(0, 10)).toBe("2026-11-23");
+    await expect(interact(userId, "away-meeting-key", "liara", { npcs: [change(away, { affection: 50 })] }, "2026-11-22")).rejects.toThrow(/CHOICE_UNAVAILABLE/);
+    expect((await interact(userId, "return-meeting-key", "liara", { npcs: [change(away, { affection: 50 })] }, "2026-11-23")).status).toBe("applied");
+    const returned = await npc(profileId, "liara");
+    expect(returned.trust).toBe(36);
+    expect((await interact(userId, "long-rest-key", "liara", { npcs: [change(returned, {})] }, "2027-01-01")).status).toBe("applied");
+    expect((await npc(profileId, "liara")).trust).toBe(36);
+  });
+
+  it("lets an obsolete partner conversation close without granting its effects", async () => {
+    const { userId, profileId } = await newPlayer();
+    await svc.query("update court_npcs set relationship_status = 'PARTNER' where game_profile_id = $1 and npc_code = 'liara'", [profileId]);
+    const event = await openEvent(userId, "liara_partner_evening", DAY, [{ code: "a", label: "Вечер" }, { code: "dismiss", label: "Отложить" }]);
+    await svc.query("update court_npcs set relationship_status = 'BROKEN' where game_profile_id = $1 and npc_code = 'liara'", [profileId]);
+    await expect(choose(userId, "obsolete-evening-a", event.id, "a", { npcs: [] })).rejects.toThrow(/CHOICE_UNAVAILABLE/);
+    expect((await choose(userId, "obsolete-evening-dismiss", event.id, "dismiss", { npcs: [] })).status).toBe("applied");
+    expect((await npc(profileId, "liara")).relationship_status).toBe("BROKEN");
   });
 
   it("upgrades saved BROKEN and recovered FRIENDS without resetting relationships", async () => {
