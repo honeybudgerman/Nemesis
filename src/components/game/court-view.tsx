@@ -25,7 +25,7 @@ const STATUS_STYLE: Record<RelationshipStatus, string> = {
   BROKEN: "text-danger border-danger",
 };
 
-const KIND_LABEL = { quest: "Личный квест", intrigue: "Интрига", politics: "Политика" } as const;
+const KIND_LABEL = { quest: "Личный квест", romance: "Отношения", intrigue: "Интрига", politics: "Политика" } as const;
 const RES_ICON = { gold: "🪙", food: "🌾", knowledge: "📘", influence: "🎖️" } as const;
 
 export function CourtView() {

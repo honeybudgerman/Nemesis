@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { STARTING_HERO_STATS, STARTING_RESOURCES } from "@/data/kingdom";
@@ -85,19 +87,20 @@ run("database: royal court", () => {
   const assign = (userId: string, key: string, position: string, code: string | null, changes: unknown) =>
     svc.query("select public.court_assign($1,$2,$3,$4,$5) as r", [userId, key, position, code, JSON.stringify(changes)]).then((r) => r.rows[0].r as { status: string });
 
-  it("manual quests have their own daily allowance and preserve the open-event cap", async () => {
+  it("manual quests share the daily allowance and preserve the open-event cap", async () => {
     const { userId } = await newPlayer();
-    const start = (code: string) =>
+    const start = (code: string, day = DAY) =>
       svc.query("select public.open_court_event_with_mode($1,$2,$3,$4,$5,$6,true) as r",
-        [userId, DAY, code, ["selvina"], JSON.stringify([{ code: "a", label: "A" }]), 2])
+        [userId, day, code, ["selvina"], JSON.stringify([{ code: "a", label: "A" }]), 2])
         .then((r) => r.rows[0].r as { id: string; status: string });
 
     const personal = await start("selvina_1");
     expect(personal.status).toBe("opened");
-    expect((await openEvent(userId, "daily_event")).status).toBe("opened");
+    expect((await openEvent(userId, "daily_event")).status).toBe("exists");
+    expect((await openEvent(userId, "daily_event", "2026-11-21")).status).toBe("opened");
     expect((await openEvent(userId, "another_daily_event")).status).toBe("exists");
     expect(await start("selvina_1")).toEqual({ id: personal.id, status: "exists" });
-    expect((await start("liara_1")).status).toBe("full");
+    expect((await start("liara_1", "2026-11-22")).status).toBe("full");
   });
 
   it("ensure_court seeds the characters and their ties once; newcomers join once", async () => {
@@ -184,6 +187,44 @@ run("database: royal court", () => {
     expect(morale).toBe(85);
   });
 
+  it("tracks automatic breaks through friendship and reconciles atomically after seven days", async () => {
+    const { userId, profileId } = await newPlayer();
+    await svc.query("update court_npcs set relationship_status = 'ROMANCE', affection = 30, trust = 60 where game_profile_id = $1 and npc_code = 'liara'", [profileId]);
+    let liara = await npc(profileId, "liara");
+    const beforeXp = (await svc.query("select total_xp from game_profiles where id = $1", [profileId])).rows[0].total_xp;
+    // The engine's automatic break also uses the central SQL apply path.
+    expect((await interact(userId, "break-auto-key", "liara", { npcs: [change(liara, { affection: 29 }, { status: "BROKEN" })] })).status).toBe("applied");
+    liara = await npc(profileId, "liara");
+    expect(liara.broken_since_day.toISOString().slice(0, 10)).toBe(DAY);
+    expect((await interact(userId, "recover-friends", "liara", { npcs: [change(liara, { affection: 65, trust: 55 }, { status: "FRIENDS" })] }, "2026-11-21")).status).toBe("applied");
+    liara = await npc(profileId, "liara");
+    expect(liara.broken_since_day.toISOString().slice(0, 10)).toBe(DAY);
+    const ev = await openEvent(userId, "liara_reconcile", "2026-11-22", [{ code: "reconcile", label: "Начать заново" }]);
+    const apply = (key: string, day: string, row = liara) => svc.query(
+      "select public.court_choose($1,$2,$3,'reconcile',$4,$5,$6) as r",
+      [userId, key, ev.id, day, JSON.stringify({ npcs: [change(row, {}, { status: "ROMANCE" })] }), JSON.stringify({ title: "Второй шанс", choice: "Да", text: "Согласие" })],
+    ).then((r) => r.rows[0].r as { status: string });
+    await expect(apply("too-early-reconcile", "2026-11-26")).rejects.toThrow(/CHOICE_UNAVAILABLE/);
+    expect((await npc(profileId, "liara")).relationship_status).toBe("FRIENDS");
+    expect((await apply("stale-reconcile", "2026-11-27", { ...liara, version: liara.version - 1 })).status).toBe("stale");
+    expect((await apply("consent-reconcile", "2026-11-27")).status).toBe("applied");
+    expect((await apply("consent-reconcile", "2026-11-27")).status).toBe("duplicate");
+    expect((await npc(profileId, "liara")).broken_since_day).toBeNull();
+    liara = await npc(profileId, "liara");
+    await interact(userId, "second-break-key", "liara", { npcs: [change(liara, { affection: 29 }, { status: "BROKEN" })] }, "2026-11-27");
+    liara = await npc(profileId, "liara");
+    await interact(userId, "second-recovery-key", "liara", { npcs: [change(liara, { affection: 65, trust: 55 }, { status: "FRIENDS" })] }, "2026-11-28");
+    const reopened = await openEvent(userId, "liara_reconcile", "2026-12-04", [{ code: "reconcile", label: "Начать заново" }]);
+    expect(reopened.status).toBe("opened");
+    expect(reopened.id).toBe(ev.id);
+    liara = await npc(profileId, "liara");
+    // An old action key must not resolve the newly reopened conversation.
+    expect((await apply("consent-reconcile", "2026-12-04")).status).toBe("duplicate");
+    expect((await svc.query("select status from court_events where id = $1", [ev.id])).rows[0].status).toBe("OPEN");
+    expect((await apply("consent-reconcile-again", "2026-12-04")).status).toBe("applied");
+    expect((await svc.query("select total_xp from game_profiles where id = $1", [profileId])).rows[0].total_xp).toBe(beforeXp);
+  });
+
   it("positions: one holder, eligibility checked, the army follows the commander", async () => {
     const { userId, profileId } = await newPlayer();
     const torvald = await npc(profileId, "torvald");
@@ -230,4 +271,48 @@ run("database: royal court", () => {
       await ua.end();
     }
   });
+  it("serializes competing event choices and rejects the losing NPC version", async () => {
+    const { userId, profileId } = await newPlayer();
+    const first = await openEvent(userId, "liara_second_confession");
+    const second = await openEvent(userId, "liara_commitment", "2026-11-21");
+    const row = await npc(profileId, "liara");
+    const clients = await Promise.all([serviceClient(url), serviceClient(url)]);
+    try {
+      const results = await Promise.all(clients.map((client, i) => client.query(
+        "select public.court_choose($1,$2,$3,'a',$4,$5,$6) as r",
+        [userId, `concurrent-consent-${i}`, i === 0 ? first.id : second.id, "2026-11-22",
+          JSON.stringify({ npcs: [change(row, { trust: 65 + i })] }), JSON.stringify({ title: "Разговор", choice: "A", text: "Ответ" })],
+      )));
+      expect(results.map((r) => r.rows[0].r.status).sort()).toEqual(["applied", "stale"]);
+      expect((await npc(profileId, "liara")).version).toBe(row.version + 1);
+    } finally {
+      await Promise.all(clients.map((client) => client.end()));
+    }
+  });
+
+  it("upgrades saved BROKEN and recovered FRIENDS without resetting relationships", async () => {
+    const { profileId } = await newPlayer();
+    await svc.query("begin");
+    try {
+      await svc.query("reset role");
+      await svc.query("drop trigger court_track_break on court_npcs");
+      await svc.query("alter table court_npcs drop column broken_since_day");
+      await svc.query("update court_npcs set relationship_status = 'FRIENDS', affection = 65, trust = 55, version = 9 where game_profile_id = $1 and npc_code = 'liara'", [profileId]);
+      await svc.query("update court_npcs set relationship_status = 'BROKEN' where game_profile_id = $1 and npc_code = 'selvina'", [profileId]);
+      await svc.query("insert into game_events (game_profile_id, event_type, payload, created_at) values ($1, 'COURT_RELATIONSHIP', $2, '2026-11-01T12:00:00Z')",
+        [profileId, JSON.stringify({ npc: "liara", from: "ROMANCE", to: "BROKEN" })]);
+      await svc.query(readFileSync(join(__dirname, "../../supabase/migrations/20261121000100_romance_second_chances.sql"), "utf8"));
+      const row = await npc(profileId, "liara");
+      expect(row.relationship_status).toBe("FRIENDS");
+      expect(row.affection).toBe(65);
+      expect(row.trust).toBe(55);
+      expect(row.version).toBe(9);
+      expect(row.broken_since_day.toISOString().slice(0, 10)).toBe("2026-11-01");
+      expect((await npc(profileId, "selvina")).broken_since_day).not.toBeNull();
+    } finally {
+      await svc.query("rollback");
+      await svc.query("set role service_role");
+    }
+  });
+
 });

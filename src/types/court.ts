@@ -31,7 +31,7 @@ export interface ChoiceView {
 export interface CourtEventView {
   id: string;
   code: string;
-  kind: "quest" | "intrigue" | "politics";
+  kind: "quest" | "romance" | "intrigue" | "politics";
   title: string;
   text: string;
   participants: { code: string; name: string }[];

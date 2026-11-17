@@ -71,6 +71,7 @@ interface NpcRow {
   position: Position | null;
   recruited_at: string | null;
   last_interaction_day: string | null;
+  broken_since_day?: string | null;
   version: number;
 }
 
@@ -111,8 +112,8 @@ function buildingLevels(realm: Realm) {
 
 async function loadRows(db: SupabaseClient, profileId: string) {
   const [n, e] = await Promise.all([
-    db.from("court_npcs").select("id, npc_code, loyalty, affection, trust, ambition, jealousy, influence, relationship_status, position, recruited_at, last_interaction_day, version").eq("game_profile_id", profileId),
-    db.from("court_events").select("id, event_code, event_day, opened_manually, status, selected_choice, outcome, resolved_day").eq("game_profile_id", profileId).order("created_at"),
+    db.from("court_npcs").select("*").eq("game_profile_id", profileId),
+    db.from("court_events").select("*").eq("game_profile_id", profileId).order("created_at"),
   ]);
   if (n.error) throw fromDbError(n.error);
   if (e.error) throw fromDbError(e.error);
@@ -129,6 +130,7 @@ function factsOf(realm: Realm, today: string, heroName: string, heroLevel: numbe
       position: r.position,
       recruited: r.recruited_at != null,
       lastInteractionDay: r.last_interaction_day,
+      brokenSinceDay: r.broken_since_day ?? null,
       version: r.version,
     };
   }
@@ -182,7 +184,7 @@ async function loadCourt(db: SupabaseClient, userId: string, opts: { openEvent?:
   }
 
   if (opts.openEvent) {
-    const openedToday = events.some((e) => e.event_day === today && !e.opened_manually);
+    const openedToday = events.some((e) => e.event_day === today);
     const pick = pickDailyEvent(facts, hashString(`court:${realm.profileId}:${today}`), openedToday);
     if (pick) {
       await rpc("open_court_event", {
@@ -257,7 +259,7 @@ function positionsView(c: Court): PositionView[] {
 
 function choiceViews(c: Court, code: string): ChoiceView[] {
   const def = EVENT_BY_CODE[code];
-  return def.choices.map((ch) => ({ code: ch.code, label: ch.label, hint: ch.hint ?? null, cost: ch.cost ?? {}, blocked: choiceBlocked(c.facts, code, ch.code) }));
+  return def.choices.map((ch) => ({ code: ch.code, label: ch.label, hint: typeof ch.hint === "function" ? ch.hint(c.facts) : ch.hint ?? null, cost: ch.cost ?? {}, blocked: choiceBlocked(c.facts, code, ch.code) }));
 }
 
 function screenOf(c: Court): CourtScreen {
@@ -309,6 +311,9 @@ export async function startPersonalQuest(db: SupabaseClient, userId: string, cod
     throw new ApiError("VALIDATION_ERROR", "Этот личный квест недоступен.");
   }
   if (c.facts.open.includes(code)) return screenOf(c);
+  if (c.events.some((e) => e.event_day === c.today)) {
+    throw new ApiError("CHOICE_UNAVAILABLE", "Сегодня уже открылось событие двора. Продолжим завтра.");
+  }
   if (!event.requires(c.facts)) throw new ApiError("VALIDATION_ERROR", "Сначала выполните условия личного квеста.");
 
   const result = await rpc<{ status: "opened" | "exists" | "full" }>("open_court_event_with_mode", {
@@ -483,6 +488,9 @@ export async function choose(db: SupabaseClient, userId: string, input: { eventI
     if (blocked) throw blockedError(blocked);
 
     const def = EVENT_BY_CODE[ev.event_code];
+    if (def.kind === "romance" && !def.requires(c.facts)) {
+      throw new ApiError("CHOICE_UNAVAILABLE", "Условия этого разговора изменились. Сначала восстановите доверие.");
+    }
     const { outcome, changes } = resolveChoice(c.facts, ev.event_code, input.choice);
     const view: OutcomeView = {
       title: def.title,
