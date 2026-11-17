@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CourtPortrait } from "@/components/characters/court-portrait";
 import { POSITION_DEFS, ROLE_LABELS, SKILL_LABELS_NPC, SKILLS, STAT_LABELS, STATUS_LABELS, NPC_STATS, type NpcStat, type RelationshipStatus } from "@/data/court/npcs";
-import { useAssign, useChoose, useCourt, useInteract, useNpc } from "@/hooks/use-court";
+import { useAssign, useChoose, useCourt, useInteract, useNpc, useStartPersonalQuest } from "@/hooks/use-court";
 import type { CourtEventView, CourtScreen, NpcCard, NpcDetail, OutcomeView } from "@/types/court";
 
 const STAT_COLOR: Record<NpcStat, string> = {
@@ -118,7 +118,7 @@ export function CourtScreenView({
 function EventCard({ e, onOutcome }: { e: CourtEventView; onOutcome: (o: OutcomeView) => void }) {
   const choose = useChoose();
   return (
-    <section className="pixel-panel p-4" aria-label={e.title} style={{ borderColor: e.kind === "quest" ? "var(--gold-dim)" : e.kind === "intrigue" ? "var(--rival)" : "var(--mana)" }}>
+    <section id={`court-event-${e.code}`} tabIndex={-1} className="pixel-panel scroll-mt-24 p-4" aria-label={e.title} style={{ borderColor: e.kind === "quest" ? "var(--gold-dim)" : e.kind === "intrigue" ? "var(--rival)" : "var(--mana)" }}>
       <div className="text-xs uppercase tracking-wide text-muted">{KIND_LABEL[e.kind]}</div>
       <h2 className="font-display text-xl text-gold">{e.title}</h2>
       <div className="mt-2 flex gap-3">
@@ -222,6 +222,7 @@ function NpcPanel({ code, card, preview }: { code: string; card: NpcCard; previe
   const q = useNpc(preview ? null : code);
   const d = preview ?? q.data;
   const interact = useInteract();
+  const startQuest = useStartPersonalQuest();
   const [line, setLine] = useState<{ content: string; source: "AI" | "FALLBACK" } | null>(null);
   useEffect(() => setLine(null), [code]);
   const c = d?.card ?? card;
@@ -322,8 +323,20 @@ function NpcPanel({ code, card, preview }: { code: string; card: NpcCard; previe
                     <span className="min-w-0">
                       <span className={s.state === "locked" ? "text-muted" : ""}>{s.title}</span>
                       {s.choice && <span className="block text-xs text-muted">Решение: {s.choice}</span>}
-                      {s.state === "open" && <span className="block text-xs text-gold">Ждёт вашего решения выше</span>}
-                      {s.state === "ready" && <span className="block text-xs text-muted">Скоро произойдёт</span>}
+                      {s.state === "open" && <a className="block text-xs text-gold underline" href={`#court-event-${s.code}`}>Перейти к решению</a>}
+                      {s.state === "ready" && (
+                        <button type="button" className="pixel-btn mt-1 text-xs" disabled={!!preview || startQuest.isPending}
+                          onClick={() => startQuest.mutate(s.code, { onSuccess: () => {
+                            requestAnimationFrame(() => {
+                              const event = document.getElementById(`court-event-${s.code}`);
+                              event?.focus({ preventScroll: true });
+                              event?.scrollIntoView({ block: "start" });
+                            });
+                          } })}
+                        >
+                          {startQuest.isPending && startQuest.variables === s.code ? "Открываем…" : "Начать личный квест"}
+                        </button>
+                      )}
                       {s.hint && <span className="block text-xs text-muted">{s.hint}</span>}
                     </span>
                   </li>

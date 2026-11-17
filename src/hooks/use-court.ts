@@ -72,6 +72,19 @@ export function useInteract() {
   });
 }
 
+export function useStartPersonalQuest() {
+  const qc = useQueryClient();
+  const push = useUiStore((s) => s.pushToast);
+  return useMutation({
+    mutationFn: (code: string) => apiFetch<CourtScreen>("/api/court/start-quest", { method: "POST", json: { code } }),
+    onSuccess: (screen) => {
+      qc.setQueryData(COURT_KEY, screen);
+      qc.invalidateQueries({ queryKey: ["court", "npc"] });
+    },
+    onError: (e) => push("error", e instanceof Error ? e.message : "Не удалось начать квест."),
+  });
+}
+
 export function useChoose() {
   const qc = useQueryClient();
   const push = useUiStore((s) => s.pushToast);

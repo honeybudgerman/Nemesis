@@ -78,6 +78,7 @@ interface EventRow {
   id: string;
   event_code: string;
   event_day: string;
+  opened_manually: boolean;
   status: "OPEN" | "RESOLVED";
   selected_choice: string | null;
   outcome: { title?: string; choice?: string; text?: string } | null;
@@ -111,7 +112,7 @@ function buildingLevels(realm: Realm) {
 async function loadRows(db: SupabaseClient, profileId: string) {
   const [n, e] = await Promise.all([
     db.from("court_npcs").select("id, npc_code, loyalty, affection, trust, ambition, jealousy, influence, relationship_status, position, recruited_at, last_interaction_day, version").eq("game_profile_id", profileId),
-    db.from("court_events").select("id, event_code, event_day, status, selected_choice, outcome, resolved_day").eq("game_profile_id", profileId).order("created_at"),
+    db.from("court_events").select("id, event_code, event_day, opened_manually, status, selected_choice, outcome, resolved_day").eq("game_profile_id", profileId).order("created_at"),
   ]);
   if (n.error) throw fromDbError(n.error);
   if (e.error) throw fromDbError(e.error);
@@ -181,7 +182,7 @@ async function loadCourt(db: SupabaseClient, userId: string, opts: { openEvent?:
   }
 
   if (opts.openEvent) {
-    const openedToday = events.some((e) => e.event_day === today);
+    const openedToday = events.some((e) => e.event_day === today && !e.opened_manually);
     const pick = pickDailyEvent(facts, hashString(`court:${realm.profileId}:${today}`), openedToday);
     if (pick) {
       await rpc("open_court_event", {
@@ -299,6 +300,30 @@ function screenOf(c: Court): CourtScreen {
 
 export async function getCourtScreen(db: SupabaseClient, userId: string): Promise<CourtScreen> {
   return screenOf(await loadCourt(db, userId, { openEvent: true }));
+}
+
+export async function startPersonalQuest(db: SupabaseClient, userId: string, code: string): Promise<CourtScreen> {
+  const c = await loadCourt(db, userId);
+  const event = EVENT_BY_CODE[code];
+  if (event?.kind !== "quest" || c.facts.resolved[code]) {
+    throw new ApiError("VALIDATION_ERROR", "Этот личный квест недоступен.");
+  }
+  if (c.facts.open.includes(code)) return screenOf(c);
+  if (!event.requires(c.facts)) throw new ApiError("VALIDATION_ERROR", "Сначала выполните условия личного квеста.");
+
+  const result = await rpc<{ status: "opened" | "exists" | "full" }>("open_court_event_with_mode", {
+    p_user_id: userId,
+    p_day: c.today,
+    p_code: code,
+    p_participants: event.participants,
+    p_choices: event.choices.map(({ code, label }) => ({ code, label })),
+    p_max_open: MAX_OPEN_EVENTS,
+    p_manual: true,
+  });
+  if (result.status === "full") {
+    throw new ApiError("VALIDATION_ERROR", "Сначала примите решение по одному из открытых событий двора.");
+  }
+  return screenOf(await loadCourt(db, userId));
 }
 
 async function detailOf(db: SupabaseClient, c: Court, code: string): Promise<NpcDetail> {
